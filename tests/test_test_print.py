@@ -1,6 +1,6 @@
-#!/usr/bin/env python3.8
-"""Base API Client: Test Test Print
-Copyright © 2019-2020 Jerod Gawne <https://github.com/jerodg/>
+#!/usr/bin/env python3.9
+"""Base Client API: Test Test Print
+Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Server Side Public License (SSPL) as
@@ -22,15 +22,15 @@ import time
 
 import pytest
 
-from base_api_client import BaseApiClient, bprint, tprint
-from base_api_client.models import Results
+from base_client_api import BaseClientApi, bprint, tprint
+from base_client_api.models import Results
 
 
 @pytest.mark.asyncio
 async def test_request_debug():
     ts = time.perf_counter()
 
-    async with BaseApiClient() as bac:
+    async with BaseClientApi() as bac:
         tasks = [asyncio.create_task(bac.request(method='get',
                                                  end_point='http://openlibrary.org/search/lists.json',
                                                  params={'limit':  5,

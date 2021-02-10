@@ -1,6 +1,6 @@
-#!/usr/bin/aenv python3.8
-"""Base API Client
-Copyright © 2019-2020 Jerod Gawne <https://github.com/jerodg/>
+#!/usr/bin/aenv python3.9
+"""Base Client API
+Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Server Side Public License (SSPL) as
@@ -18,11 +18,11 @@ copies or substantial portions of the Software.
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 import asyncio
-import logging
 from asyncio import Semaphore
 from json.decoder import JSONDecodeError
+from logging import DEBUG, WARNING
 from os import getenv
-from os.path import realpath
+from os.path import basename, realpath
 from ssl import create_default_context, Purpose, SSLContext
 from typing import List, NoReturn, Optional, Union
 from uuid import uuid4
@@ -31,16 +31,18 @@ import aiofiles
 import aiohttp as aio
 import rapidjson
 import toml
+from loguru import logger
 from multidict import MultiDict
 from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
 from .models import Results
 
-logger = logging.getLogger(__name__)
+logger.add(basename(__file__)[:-3])
+logger.disable(basename(__file__)[:-3])  # Because this is a library; use logger.enable('base_client') in script to see log msgs.
 
 
-class BaseApiClient(object):
-    """ Base API Client """
+class BaseClientApi(object):
+    """ Base Client API"""
     HDR: dict = {'Content-Type': 'application/json; charset=utf-8'}
     SEM: int = 15  # This defines the number of parallel requests to make.
 
@@ -64,17 +66,16 @@ class BaseApiClient(object):
         await self.session.close()
 
     def __load_config_data(self, cfg_data: Union[str, dict]) -> dict:
-        """
+        """Load Configuration Data
 
         Args:
-            cfg_data (Union[str, dct): str; path to config file [toml|json]
-                                   dct; dictionary matching config example
+            cfg_data (Union[str, dict): str; path to config file [toml|json]
+                                   dict; dictionary matching config example
                 Values expressed in example config can be overridden by OS
                 environment variables.
 
         Returns:
-            cfg (dct)
-        """
+            cfg (dict)"""
         if type(cfg_data) is dict:
             cfg = cfg_data
         elif type(cfg_data) is str:
@@ -259,7 +260,7 @@ class BaseApiClient(object):
 
     @staticmethod
     async def request_debug(response: aio.ClientResponse) -> str:
-        """
+        """Request Debug
 
         Args:
             response (aio.ClientResponse):
@@ -394,9 +395,9 @@ class BaseApiClient(object):
 
     @retry(retry=retry_if_exception_type(aio.ClientError),
            wait=wait_random_exponential(multiplier=1.25, min=3, max=60),
-           after=after_log(logger, logging.DEBUG),
+           after=after_log(logger, DEBUG),
            stop=stop_after_attempt(5),
-           before_sleep=before_sleep_log(logger, logging.WARNING))
+           before_sleep=before_sleep_log(logger, WARNING))
     async def request(self, method: str, end_point: str,
                       request_id: Optional[str] = None,
                       data: Optional[Union[dict, aio.FormData]] = None,

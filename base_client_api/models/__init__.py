@@ -1,6 +1,6 @@
-#!/usr/bin/env python3.8
-"""Base API Client: Models.Init
-Copyright © 2019-2020 Jerod Gawne <https://github.com/jerodg/>
+#!/usr/bin/env python3.9
+"""Base Client API: Models.Init
+Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Server Side Public License (SSPL) as
