@@ -1,13 +1,8 @@
 [tool.poetry]
 name = "base-client-api"
-version = "1.0.0"
+version = "1.1.0"
 description = ""
 authors = ["Jerod Gawne <jerodgawne@gmail.com>"]
-
-[[tool.poetry.source]]
-name = '53'
-url = 'http://slflokydcaims01.info53.com:3141/root/pypi/+simple/'
-default = true
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -23,7 +18,7 @@ toml = "^0.10.2"
 [tool.poetry.dev-dependencies]
 pytest-asyncio = "^0.14.0"
 pytest-cov = "^2.11.1"
-pytest-runner = "^5.2"
+pytest-runner = "^5.3.0"
 pytest = "^6.2.2"
 twine = "^3.3.0"
 

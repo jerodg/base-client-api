@@ -20,3 +20,5 @@ If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 from .base_client import BaseClientApi
 from .models import Record, Results, sort_dict
 from .utils import bprint, tprint
+
+METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']

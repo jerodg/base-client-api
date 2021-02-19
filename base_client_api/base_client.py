@@ -35,6 +35,7 @@ from loguru import logger
 from multidict import MultiDict
 from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
+from base_client_api import METHODS
 from .models import Results
 
 logger.add(basename(__file__)[:-3])
@@ -42,9 +43,9 @@ logger.disable(basename(__file__)[:-3])  # Because this is a library; use logger
 
 
 class BaseClientApi(object):
-    """ Base Client API"""
+    """Base Client API"""
     HDR: dict = {'Content-Type': 'application/json; charset=utf-8'}
-    SEM: int = 15  # This defines the number of parallel requests to make.
+    SEM: int = 5  # This defines the number of parallel requests to make.
 
     def __init__(self, cfg: Optional[Union[str, dict]] = None):
         self.debug: bool = False
@@ -275,6 +276,7 @@ class BaseClientApi(object):
             j = None
             t = await response.text()
 
+        # todo: convert to a model
         return f'\nHTTP/{response.version.major}.{response.version.minor}, {response.method}-{response.status}[{response.reason}]' \
                f'\n\tRequest-URL: \n\t\t{response.url}\n' \
                f'\n\tHeader: \n\t\t{hdr}\n' \
@@ -301,7 +303,7 @@ class BaseClientApi(object):
             Performs generic sort if sort_field not specified.
 
         Returns:
-            results (Results): """
+            results (Results)"""
         for result in results.data:
             rid = {'request_id': result['request_id']}
             status = result['response'].status
@@ -398,7 +400,7 @@ class BaseClientApi(object):
            after=after_log(logger, DEBUG),
            stop=stop_after_attempt(5),
            before_sleep=before_sleep_log(logger, WARNING))
-    async def request(self, method: str, end_point: str,
+    async def request(self, method: str, endpoint: str,
                       request_id: Optional[str] = None,
                       data: Optional[Union[dict, aio.FormData]] = None,
                       json: Optional[dict] = None,
@@ -409,7 +411,7 @@ class BaseClientApi(object):
         Args:
             file (Optional[str]): A valid file-path
             method (str): A valid HTTP Verb in [GET, POST]
-            end_point (str): REST Endpoint; e.g. /devices/query
+            endpoint (str): REST Endpoint; e.g. /devices/query
             request_id (str): Unique Identifier used to associate request with response
             data (Optional[dct]):
             json (Optional[dct]):
@@ -435,47 +437,67 @@ class BaseClientApi(object):
         except TypeError:
             base = ''
 
+        method = method.upper()
+
         async with self.sem:
-            if method == 'get':
-                response = await self.session.get(url=f'{base}{end_point}',
+            if method == 'GET':
+                response = await self.session.get(url=f'{base}{endpoint}',
                                                   ssl=self.ssl,
                                                   proxy=self.proxy,
                                                   proxy_auth=self.proxy_auth,
                                                   params=params)
-            elif method == 'patch':
-                response = await self.session.patch(url=f'{base}{end_point}',
-                                                    ssl=self.ssl,
-                                                    proxy=self.proxy,
-                                                    proxy_auth=self.proxy_auth,
-                                                    data=data,
-                                                    json=json,
-                                                    params=params)
-            elif method == 'post':
-                response = await self.session.post(url=f'{base}{end_point}',
+
+            elif method == 'HEAD':  # todo:
+                raise NotImplementedError
+
+            elif method == 'POST':
+                response = await self.session.post(url=f'{base}{endpoint}',
                                                    ssl=self.ssl,
                                                    proxy=self.proxy,
                                                    proxy_auth=self.proxy_auth,
                                                    data=data,
                                                    json=json,
                                                    params=params)
-            elif method == 'put':
-                response = await self.session.put(url=f'{base}{end_point}',
+
+            elif method == 'PUT':
+                response = await self.session.put(url=f'{base}{endpoint}',
                                                   ssl=self.ssl,
                                                   proxy=self.proxy,
                                                   proxy_auth=self.proxy_auth,
                                                   data=data,
                                                   json=json,
                                                   params=params)
-            elif method == 'delete':
-                response = await self.session.delete(url=f'{base}{end_point}',
+
+            elif method == 'DELETE':
+                response = await self.session.delete(url=f'{base}{endpoint}',
                                                      ssl=self.ssl,
                                                      proxy=self.proxy,
                                                      proxy_auth=self.proxy_auth,
                                                      data=data,
                                                      json=json,
                                                      params=params)
+
+            elif method == 'CONNECT':  # todo:
+                raise NotImplementedError
+
+            elif method == 'OPTIONS':  # todo:
+                raise NotImplementedError
+
+            elif method == 'TRACE':  # todo:
+                raise NotImplementedError
+
+            elif method == 'PATCH':
+                response = await self.session.patch(url=f'{base}{endpoint}',
+                                                    ssl=self.ssl,
+                                                    proxy=self.proxy,
+                                                    proxy_auth=self.proxy_auth,
+                                                    data=data,
+                                                    json=json,
+                                                    params=params)
+
             else:
-                logger.error(f'Request-Method: {method}, not currently handled.')
+                logger.error(f'Method ({method}) is not a valid HTTP verb, '
+                             f'it must be one of the following\n-> {", ".join(METHODS)}')
                 raise NotImplementedError
 
             if self.debug or debug:

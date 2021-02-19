@@ -17,12 +17,13 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-import logging
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, List, NoReturn, Optional, Union
 
-logger = logging.getLogger(__name__)
+from loguru import logger
+
+from base_client_api import METHODS
 
 
 def sort_dict(dct: dict, reverse: Optional[bool] = False) -> dict:
@@ -46,8 +47,19 @@ def sort_dict(dct: dict, reverse: Optional[bool] = False) -> dict:
 @dataclass
 class Record:
     """Generic Record"""
+    method: str  # Must be a valid HTTP verb
 
-    def clear(self):
+    def __post_init__(self):
+        if self.method.upper() not in METHODS:
+            logger.error(f'Method ({self.method}) is not a valid HTTP verb, '
+                         f'it must be one of the following\n-> {", ".join(METHODS)}')
+
+    def clear(self) -> NoReturn:
+        """Clear
+        Sets all record values to None
+
+        Returns:
+            (NoReturn)"""
         for k, v in self.__dict__.items():
             self.__dict__[k] = None
 
@@ -69,6 +81,8 @@ class Record:
         if sort_order:
             dct = sort_dict(dct, reverse=True if sort_order.lower() == 'desc' else False)
 
+        del dct['method']
+
         return dct
 
     def load(self, **entries):
@@ -78,12 +92,34 @@ class Record:
         self.__dict__.update(entries)
 
     @property
-    def end_point(self):
+    def endpoint(self) -> str:
+        """Endpoint
+
+        The suffix end of the URI
+
+        Returns:
+            (str)"""
         return '/'
 
     @property
-    def data_key(self):
+    def data_key(self) -> Union[str, None]:
+        """Data Key
+
+        This is the key used in the return dict that holds the primary data
+
+        Returns:
+            (Union[str, None])"""
         return None
+
+    @property
+    def method(self) -> str:
+        """Method
+
+        The HTTP verb to be used
+
+        Returns:
+            (str)"""
+        return self.method
 
 
 if __name__ == '__main__':
