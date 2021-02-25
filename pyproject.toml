@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "base-client-api"
-version = "1.1.0"
+version = "1.2.0"
 description = "Base Client API; Used to build other client APIs"
 authors = ["Jerod Gawne <jerodgawne@gmail.com>"]
 
@@ -14,6 +14,7 @@ cchardet = "^2.1.7"
 python-rapidjson = "^1.0"
 tenacity = "^6.3.1"
 toml = "^0.10.2"
+brotlipy = "^0.7.0"
 
 [tool.poetry.dev-dependencies]
 pytest-asyncio = "^0.14.0"

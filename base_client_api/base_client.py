@@ -22,7 +22,7 @@ from asyncio import Semaphore
 from json.decoder import JSONDecodeError
 from logging import DEBUG, WARNING
 from os import getenv
-from os.path import basename, realpath
+from os.path import realpath
 from ssl import create_default_context, Purpose, SSLContext
 from typing import List, NoReturn, Optional, Union
 from uuid import uuid4
@@ -31,15 +31,12 @@ import aiofiles
 import aiohttp as aio
 import rapidjson
 import toml
-from loguru import logger
 from multidict import MultiDict
 from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
-from base_client_api import METHODS
+from base_client_api import logger, METHODS
+from .exceptions import InvalidOptionError
 from .models import Results
-
-logger.add(basename(__file__)[:-3])
-logger.disable(basename(__file__)[:-3])  # Because this is a library; use logger.enable('base_client') in script to see log msgs.
 
 
 class BaseClientApi(object):
@@ -50,6 +47,7 @@ class BaseClientApi(object):
     def __init__(self, cfg: Optional[Union[str, dict]] = None):
         self.debug: bool = False
         self.cfg: Union[dict, None] = None
+        self.auth: Union[aio.BasicAuth, None] = None
         self.proxy: Union[str, None] = None
         self.proxy_auth: Union[aio.BasicAuth, None] = None
         self.sem: Union[Semaphore, None] = None
@@ -66,6 +64,7 @@ class BaseClientApi(object):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.session.close()
 
+    @logger.catch
     def __load_config_data(self, cfg_data: Union[str, dict]) -> dict:
         """Load Configuration Data
 
@@ -133,6 +132,7 @@ class BaseClientApi(object):
 
         return cfg
 
+    @logger.catch
     def process_config(self, cfg_data: dict) -> NoReturn:
         """Process Configuration
 
@@ -146,6 +146,13 @@ class BaseClientApi(object):
                 self.debug = True
         except (KeyError, TypeError):
             self.debug = False
+
+        try:
+            if usr := cfg_data['Auth']['Username']:
+                if pwd := cfg_data['Auth']['Password']:
+                    self.auth = aio.BasicAuth(login=usr, password=pwd)
+        except (KeyError, TypeError):
+            pass  # If we don't have credentials we don't need to create this.
 
         try:
             proxy_uri = cfg_data['Proxy']['URI']
@@ -195,6 +202,7 @@ class BaseClientApi(object):
         else:
             self.ssl = verify_ssl
 
+    @logger.catch
     def session_config(self, cfg: dict) -> NoReturn:
         """Session Configuration
 
@@ -260,6 +268,7 @@ class BaseClientApi(object):
                                          timeout=aio.ClientTimeout(total=300))
 
     @staticmethod
+    @logger.catch
     async def request_debug(response: aio.ClientResponse) -> str:
         """Request Debug
 
@@ -283,6 +292,7 @@ class BaseClientApi(object):
                f'\n\tResponse-JSON: \n\t\t{j}\n' \
                f'\n\tResponse-TEXT: \n\t\t{t}\n'
 
+    @logger.catch
     async def process_results(self, results: Results,
                               data_key: Optional[str] = None,
                               cleanup: bool = False,
@@ -380,6 +390,7 @@ class BaseClientApi(object):
         return results
 
     @staticmethod
+    @logger.catch
     async def file_streamer(file_path: str) -> bytes:
         """File Streamer
 
@@ -400,6 +411,7 @@ class BaseClientApi(object):
            after=after_log(logger, DEBUG),
            stop=stop_after_attempt(5),
            before_sleep=before_sleep_log(logger, WARNING))
+    @logger.catch
     async def request(self, method: str, endpoint: str,
                       request_id: Optional[str] = None,
                       data: Optional[Union[dict, aio.FormData]] = None,
@@ -438,44 +450,52 @@ class BaseClientApi(object):
             base = ''
 
         method = method.upper()
+        try:
+            assert method in METHODS
+        except AssertionError:
+            raise InvalidOptionError(var=method, options=METHODS)
 
         async with self.sem:
             if method == 'GET':
-                response = await self.session.get(url=f'{base}{endpoint}',
-                                                  ssl=self.ssl,
+                response = await self.session.get(auth=self.auth,
+                                                  url=f'{base}{endpoint}',
+                                                  params=params,
                                                   proxy=self.proxy,
                                                   proxy_auth=self.proxy_auth,
-                                                  params=params)
+                                                  ssl=self.ssl)
 
             elif method == 'HEAD':  # todo:
                 raise NotImplementedError
 
             elif method == 'POST':
-                response = await self.session.post(url=f'{base}{endpoint}',
-                                                   ssl=self.ssl,
-                                                   proxy=self.proxy,
-                                                   proxy_auth=self.proxy_auth,
+                response = await self.session.post(auth=self.auth,
                                                    data=data,
                                                    json=json,
-                                                   params=params)
+                                                   params=params,
+                                                   proxy=self.proxy,
+                                                   proxy_auth=self.proxy_auth,
+                                                   ssl=self.ssl,
+                                                   url=f'{base}{endpoint}')
 
             elif method == 'PUT':
-                response = await self.session.put(url=f'{base}{endpoint}',
-                                                  ssl=self.ssl,
-                                                  proxy=self.proxy,
-                                                  proxy_auth=self.proxy_auth,
+                response = await self.session.put(auth=self.auth,
                                                   data=data,
                                                   json=json,
-                                                  params=params)
+                                                  params=params,
+                                                  proxy=self.proxy,
+                                                  proxy_auth=self.proxy_auth,
+                                                  ssl=self.ssl,
+                                                  url=f'{base}{endpoint}')
 
             elif method == 'DELETE':
-                response = await self.session.delete(url=f'{base}{endpoint}',
-                                                     ssl=self.ssl,
-                                                     proxy=self.proxy,
-                                                     proxy_auth=self.proxy_auth,
+                response = await self.session.delete(auth=self.auth,
                                                      data=data,
                                                      json=json,
-                                                     params=params)
+                                                     params=params,
+                                                     proxy=self.proxy,
+                                                     proxy_auth=self.proxy_auth,
+                                                     ssl=self.ssl,
+                                                     url=f'{base}{endpoint}')
 
             elif method == 'CONNECT':  # todo:
                 raise NotImplementedError
@@ -487,13 +507,14 @@ class BaseClientApi(object):
                 raise NotImplementedError
 
             elif method == 'PATCH':
-                response = await self.session.patch(url=f'{base}{endpoint}',
-                                                    ssl=self.ssl,
-                                                    proxy=self.proxy,
-                                                    proxy_auth=self.proxy_auth,
+                response = await self.session.patch(auth=self.auth,
                                                     data=data,
                                                     json=json,
-                                                    params=params)
+                                                    params=params,
+                                                    proxy=self.proxy,
+                                                    proxy_auth=self.proxy_auth,
+                                                    ssl=self.ssl,
+                                                    url=f'{base}{endpoint}')
 
             else:
                 logger.error(f'Method ({method}) is not a valid HTTP verb, '

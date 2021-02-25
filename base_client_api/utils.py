@@ -22,8 +22,7 @@ from random import choice, shuffle
 from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 from typing import Any, Generator, NoReturn, Optional, Sized, Union
 
-from loguru import logger
-
+from base_client_api import logger
 from base_client_api.models import Results
 
 
@@ -115,6 +114,7 @@ def tprint(results: Results, requests: Optional[Any] = None, top: Optional[Union
 
     Returns:
         (NoReturn)"""
+    # todo: change to return str in lieu of printing directly
     top_hdr = f'Top {top} ' if top else ''
 
     print(f'\n{top_hdr}Success Result{"s" if len(results.success) > 1 else ""}: {len(results.success)}')

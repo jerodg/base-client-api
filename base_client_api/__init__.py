@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.9
-"""Base Client API: Init
+"""Base Client API -> Init
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify
@@ -17,8 +17,18 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
+from loguru import logger
+
 from .base_client import BaseClientApi
+from .exceptions import InvalidOptionError
 from .models import Record, Results, sort_dict
-from .utils import bprint, tprint
+from .utils import bprint, flatten, generate_password, tprint, vprint
+
+__version__ = '1.2.0'
+
+BASE_LOGGER = 'base_client_api'
+logger.add(BASE_LOGGER)
+# Because this is a library; use logger.enable('unbound_keycontrol_client_api) in script to see log msgs.
+logger.disable(BASE_LOGGER)
 
 METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']

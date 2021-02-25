@@ -17,11 +17,8 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-import logging
 from dataclasses import dataclass, field
 from typing import List
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass

@@ -21,11 +21,10 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, List, NoReturn, Optional, Union
 
-from loguru import logger
-
-from base_client_api import METHODS
+from base_client_api import logger
 
 
+@logger.catch
 def sort_dict(dct: dict, reverse: Optional[bool] = False) -> dict:
     """Sort a dictionary, recursively, by keys.
 
