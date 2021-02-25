@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.9
-"""Base Client API: Utils
+"""Base Client API -> Utils
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify
@@ -17,27 +17,18 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
+import inspect
 from random import choice, shuffle
 from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
-from typing import Any, Generator, NoReturn, Optional, Union
+from typing import Any, Generator, NoReturn, Optional, Sized, Union
+
+from loguru import logger
 
 from base_client_api.models import Results
 
 
-def bprint(message) -> NoReturn:
-    """ Deprecated
-
-    Args:
-        message (str):
-
-    Returns:
-        (NoReturn)
-    """
-    msg = f'\n▃▅▇█▓▒░۩۞۩ {message.center(58)} ۩۞۩░▒▓█▇▅▃\n'
-    print(msg)
-
-
-def banner(message: str, location: str = None) -> str:
+@logger.catch
+def bprint(message: str, location: str = None) -> str:
     """Build a banner
 
     Args:
@@ -45,7 +36,7 @@ def banner(message: str, location: str = None) -> str:
         location (str): ['top', 'above', None]
 
     Returns:
-        (str)"""
+        msg (str)"""
     len_msg = len(message)
     if len_msg > 126:
         m = list(message)
@@ -60,13 +51,16 @@ def banner(message: str, location: str = None) -> str:
         hlf0, hlf1 = half, half + 1
 
     if location in ['top', 'above']:
-        return f'▛{"▘" * hlf0} {message} {"▝" * hlf1}▜'
+        msg = f'▛{"▘" * hlf0} {message} {"▝" * hlf1}▜'
     elif location in ['bottom', 'bot', 'below']:
-        return f'▙{"▖" * hlf0} {message} {"▗" * hlf1}▟'
+        msg = f'▙{"▖" * hlf0} {message} {"▗" * hlf1}▟'
     else:
-        return f'(ノಠ益ಠ)ノ彡 {message.center(132 - 19, " ")} ¯\\(◉◡◔)/¯'
+        msg = f'(ノಠ益ಠ)ノ彡 {message.center(132 - 19, " ")} ¯\\(◉◡◔)/¯'
+
+    return msg
 
 
+@logger.catch
 def flatten(itr: Union[tuple, list]) -> Generator:
     """Reduce embedded lists/tuples into a single list (generator)
 
@@ -82,6 +76,7 @@ def flatten(itr: Union[tuple, list]) -> Generator:
             yield item
 
 
+@logger.catch
 def generate_password(min_len=15, max_length=24) -> str:
     """Generate a Password
 
@@ -109,6 +104,7 @@ def generate_password(min_len=15, max_length=24) -> str:
     return pwd
 
 
+@logger.catch
 def tprint(results: Results, requests: Optional[Any] = None, top: Optional[Union[int, None]] = None) -> NoReturn:
     """Test Print
 
@@ -139,6 +135,46 @@ def tprint(results: Results, requests: Optional[Any] = None, top: Optional[Union
             print(*requests[:top], sep='\n')
         else:
             print(*requests, sep='\n')
+
+
+@logger.catch
+def vprint(var: Sized) -> str:
+    """Variable Printer
+       - Prints the name of the variable, length, and value.
+       -- [<variable_name>] (<variable_length>): <variable_content>
+
+    NOTE: Not all objects support length
+
+    Args:
+        var (object)
+
+    Returns:
+        output (str)"""
+    callers_local_vars = inspect.currentframe().f_back.f_locals.items()
+
+    for var_name, var_val in callers_local_vars:
+        if var_val is var:
+            t = str(type(var))
+            typ = t[t.index("'") + 1:-2]
+
+            try:
+                length = len(var)
+            except TypeError:
+                length = 'N/A'
+
+            if t is list:
+                output = f'{var_name}: {typ} = ({length}):'
+                output += [f'\t{i}' for i in var_val]
+            elif t is dict:
+                output = f'{var_name}: {typ} = ({length}):'
+                output += [f'\t{k}: {v}' for k, v in var_val.items()]
+            else:
+                output = f'{var_name}: {typ} = ({length}) {var_val}'
+
+            return output
+
+        else:
+            logger.error('var_val is not var')
 
 
 if __name__ == '__main__':
