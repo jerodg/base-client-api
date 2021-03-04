@@ -157,6 +157,16 @@ class Record:
             (Union[dict, None])"""
         return None
 
+    @property
+    def headers(self) -> Union[dict, None]:
+        """URL Parameters
+
+        If you need to pass parameters in the URL
+
+        Returns:
+            (Union[dict, None])"""
+        return None
+
 
 if __name__ == '__main__':
     print(__doc__)

@@ -24,6 +24,7 @@ from json.decoder import JSONDecodeError
 from logging import DEBUG, WARNING
 from os import getenv
 from os.path import realpath
+from pprint import pformat
 from ssl import create_default_context, Purpose, SSLContext
 from typing import Optional, Union
 from uuid import uuid4
@@ -40,8 +41,11 @@ from base_client_api.models import Results
 METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
 
 
-@logger.catch
-class BaseClientApi(object):
+# todo: update tenacity
+# todo: use terminal colors module
+
+
+class BaseClientApi:
     """Base Client API"""
     HDR: dict = {'Content-Type': 'application/json; charset=utf-8'}
     SEM: int = 5  # This defines the number of parallel requests to make.
@@ -279,18 +283,21 @@ class BaseClientApi(object):
             (str)"""
         hdr = '\n\t\t'.join(f'{k}: {v}' for k, v in response.headers.items())
         try:
-            j = rapidjson.dumps(await response.json(content_type=None), ensure_ascii=False)
-            t = None
+            json = await response.json(content_type=None)
+            json_note = 'Results length is greater than five; truncating...' if len(json) > 5 else None
+            json = pformat(json[:5], sort_dicts=False)
+            text = None
         except JSONDecodeError:
-            j = None
-            t = await response.text()
+            json = None
+            json_note = None
+            text = await response.text()
 
         # todo: convert to a model
         return f'\nHTTP/{response.version.major}.{response.version.minor}, {response.method}-{response.status}[{response.reason}]' \
                f'\n\tRequest-URL: \n\t\t{response.url}\n' \
                f'\n\tHeader: \n\t\t{hdr}\n' \
-               f'\n\tResponse-JSON: \n\t\t{j}\n' \
-               f'\n\tResponse-TEXT: \n\t\t{t}\n'
+               f'\n\tResponse-JSON: {json_note}\n{json}\n' \
+               f'\n\tResponse-TEXT: \n\t\t{text}\n'
 
     async def process_results(self, results: Results,
                               data_key: Optional[str] = None,
@@ -444,6 +451,7 @@ class BaseClientApi(object):
         async with self.sem:
             if model.method == 'GET':
                 response = await self.session.get(auth=self.auth,
+                                                  headers=model.headers or self.HDR,
                                                   url=f'{base}{model.endpoint}',
                                                   params=model.params,
                                                   proxy=self.proxy,
@@ -456,6 +464,7 @@ class BaseClientApi(object):
             elif model.method == 'POST':
                 response = await self.session.post(auth=self.auth,
                                                    data=data,
+                                                   headers=model.headers or self.HDR,
                                                    json=model.json or None,
                                                    params=model.params or None,
                                                    proxy=self.proxy,
@@ -466,6 +475,7 @@ class BaseClientApi(object):
             elif model.method == 'PUT':
                 response = await self.session.put(auth=self.auth,
                                                   data=data,
+                                                  headers=model.headers or self.HDR,
                                                   json=model.json or None,
                                                   params=model.params or None,
                                                   proxy=self.proxy,
@@ -476,6 +486,7 @@ class BaseClientApi(object):
             elif model.method == 'DELETE':
                 response = await self.session.delete(auth=self.auth,
                                                      data=data,
+                                                     headers=model.headers or self.HDR,
                                                      json=model.json or None,
                                                      params=model.params or None,
                                                      proxy=self.proxy,
@@ -495,6 +506,7 @@ class BaseClientApi(object):
             elif model.method == 'PATCH':
                 response = await self.session.patch(auth=self.auth,
                                                     data=data,
+                                                    headers=model.headers or self.HDR,
                                                     json=model.json or None,
                                                     params=model.params or None,
                                                     proxy=self.proxy,
@@ -512,6 +524,25 @@ class BaseClientApi(object):
                 raise aio.ClientError
 
             return {'request_id': request_id, 'response': response}
+
+    async def make_request(self, models: dataclass, debug: bool = False) -> Results:
+        """Make Request
+
+        This is a convenience method to make calling easier.
+        It can be overridden to provide additional functionality.
+
+        Args:
+            models (dataclass):
+            debug (bool):
+
+        Returns:
+            results (Reults)"""
+        if type(models) is not list:
+            models = [models]
+
+        results = await asyncio.gather(*[asyncio.create_task(self.request(m, debug=debug)) for m in models])
+
+        return await self.process_results(results=Results(data=results), data_key=models[0].data_key)
 
 
 if __name__ == '__main__':
