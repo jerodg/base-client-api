@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.9
-"""Base Client API
+"""Base Client API -> Base Client
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify
@@ -19,26 +19,28 @@ You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 import asyncio
 from asyncio import Semaphore
+from dataclasses import dataclass
 from json.decoder import JSONDecodeError
 from logging import DEBUG, WARNING
 from os import getenv
 from os.path import realpath
 from ssl import create_default_context, Purpose, SSLContext
-from typing import List, NoReturn, Optional, Union
+from typing import Optional, Union
 from uuid import uuid4
 
 import aiofiles
 import aiohttp as aio
 import rapidjson
 import toml
-from multidict import MultiDict
+from loguru import logger
 from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
-from base_client_api import logger, METHODS
-from .exceptions import InvalidOptionError
-from .models import Results
+from base_client_api.models import Results
+
+METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
 
 
+@logger.catch
 class BaseClientApi(object):
     """Base Client API"""
     HDR: dict = {'Content-Type': 'application/json; charset=utf-8'}
@@ -46,7 +48,6 @@ class BaseClientApi(object):
 
     def __init__(self, cfg: Optional[Union[str, dict]] = None):
         self.debug: bool = False
-        self.cfg: Union[dict, None] = None
         self.auth: Union[aio.BasicAuth, None] = None
         self.proxy: Union[str, None] = None
         self.proxy_auth: Union[aio.BasicAuth, None] = None
@@ -54,9 +55,9 @@ class BaseClientApi(object):
         self.session: Union[aio.ClientSession, None] = None
         self.ssl: Union[SSLContext, None] = None
 
-        cfg = self.__load_config_data(cfg)
-        self.process_config(cfg)
-        self.session_config(cfg)
+        self.cfg = self.__load_config_data(cfg)
+        self.process_config(self.cfg)
+        self.session_config(self.cfg)
 
     async def __aenter__(self):
         return self
@@ -64,8 +65,8 @@ class BaseClientApi(object):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.session.close()
 
-    @logger.catch
-    def __load_config_data(self, cfg_data: Union[str, dict]) -> dict:
+    @staticmethod
+    def __load_config_data(cfg_data: Union[str, dict]) -> dict:
         """Load Configuration Data
 
         Args:
@@ -128,19 +129,16 @@ class BaseClientApi(object):
         if env_prxy_pass := getenv('Proxy_Password'):
             cfg['Proxy']['Password'] = env_prxy_pass
 
-        self.cfg = cfg
-
         return cfg
 
-    @logger.catch
-    def process_config(self, cfg_data: dict) -> NoReturn:
+    def process_config(self, cfg_data: dict) -> bool:
         """Process Configuration
 
         Args:
             cfg_data (dict):
 
         Returns:
-            N/A (NoReturn)"""
+            (bool)"""
         try:
             if cfg_data['Options']['Debug']:
                 self.debug = True
@@ -202,15 +200,16 @@ class BaseClientApi(object):
         else:
             self.ssl = verify_ssl
 
-    @logger.catch
-    def session_config(self, cfg: dict) -> NoReturn:
+        return True
+
+    def session_config(self, cfg: dict) -> bool:
         """Session Configuration
 
         Args:
             cfg (dict):
 
         Returns:
-            N/A (NoReturn)"""
+            (bool)"""
         # Auth
         try:
             username = cfg['Auth']['Username']
@@ -267,8 +266,9 @@ class BaseClientApi(object):
                                          json_serialize=rapidjson.dumps,
                                          timeout=aio.ClientTimeout(total=300))
 
+        return True
+
     @staticmethod
-    @logger.catch
     async def request_debug(response: aio.ClientResponse) -> str:
         """Request Debug
 
@@ -292,7 +292,6 @@ class BaseClientApi(object):
                f'\n\tResponse-JSON: \n\t\t{j}\n' \
                f'\n\tResponse-TEXT: \n\t\t{t}\n'
 
-    @logger.catch
     async def process_results(self, results: Results,
                               data_key: Optional[str] = None,
                               cleanup: bool = False,
@@ -313,7 +312,7 @@ class BaseClientApi(object):
             Performs generic sort if sort_field not specified.
 
         Returns:
-            results (Results)"""
+            results (Results): """
         for result in results.data:
             rid = {'request_id': result['request_id']}
             status = result['response'].status
@@ -390,7 +389,6 @@ class BaseClientApi(object):
         return results
 
     @staticmethod
-    @logger.catch
     async def file_streamer(file_path: str) -> bytes:
         """File Streamer
 
@@ -401,7 +399,6 @@ class BaseClientApi(object):
 
         Returns:
             chunk (bytes)"""
-
         async with aiofiles.open(realpath(file_path), 'rb') as f:
             while chunk := await f.read(1024):
                 yield chunk
@@ -411,23 +408,17 @@ class BaseClientApi(object):
            after=after_log(logger, DEBUG),
            stop=stop_after_attempt(5),
            before_sleep=before_sleep_log(logger, WARNING))
-    @logger.catch
-    async def request(self, method: str, endpoint: str,
-                      request_id: Optional[str] = None,
-                      data: Optional[Union[dict, aio.FormData]] = None,
-                      json: Optional[dict] = None,
-                      params: Optional[Union[List[tuple], dict, MultiDict]] = None,
-                      file: Optional[str] = None,
-                      debug: Optional[bool] = False) -> dict:
+    async def request(self, model: dataclass, debug: Optional[bool] = False) -> dict:
         """Multi-purpose aiohttp request function
         Args:
-            file (Optional[str]): A valid file-path
-            method (str): A valid HTTP Verb in [GET, POST]
-            endpoint (str): REST Endpoint; e.g. /devices/query
-            request_id (str): Unique Identifier used to associate request with response
-            data (Optional[dct]):
-            json (Optional[dct]):
-            params (Optional[Union[List[tuple], dct, MultiDict]]):
+            model (dataclass): Optionally defined:
+                               - file (Optional[str]): A valid file-path
+                               - method (str): A valid HTTP Verb in [GET, POST]
+                               - end_point (str): REST Endpoint; e.g. /devices/query
+                               - request_id (str): Unique Identifier used to associate request with response
+                               - data (Optional[dct]):
+                               - json (Optional[dct]):
+                               - params (Optional[Union[List[tuple], dct, MultiDict]]):
             debug (Optional[bool]):
 
         References:
@@ -438,88 +429,78 @@ class BaseClientApi(object):
 
         Returns:
             (dict)"""
-        if not request_id:
-            request_id = uuid4().hex
+        request_id = uuid4().hex
 
-        if file:
-            data = {**data, 'file': self.file_streamer(file)}
+        if file := model.file:
+            data = {**model.data, 'file': self.file_streamer(file)}
+        else:
+            data = None
 
         try:
             base = self.cfg['URI']['Base']
         except TypeError:
             base = ''
 
-        method = method.upper()
-        try:
-            assert method in METHODS
-        except AssertionError:
-            raise InvalidOptionError(var=method, options=METHODS)
-
         async with self.sem:
-            if method == 'GET':
+            if model.method == 'GET':
                 response = await self.session.get(auth=self.auth,
-                                                  url=f'{base}{endpoint}',
-                                                  params=params,
+                                                  url=f'{base}{model.endpoint}',
+                                                  params=model.params,
                                                   proxy=self.proxy,
                                                   proxy_auth=self.proxy_auth,
                                                   ssl=self.ssl)
 
-            elif method == 'HEAD':  # todo:
+            elif model.method == 'HEAD':  # todo:
                 raise NotImplementedError
 
-            elif method == 'POST':
+            elif model.method == 'POST':
                 response = await self.session.post(auth=self.auth,
                                                    data=data,
-                                                   json=json,
-                                                   params=params,
+                                                   json=model.json or None,
+                                                   params=model.params or None,
                                                    proxy=self.proxy,
                                                    proxy_auth=self.proxy_auth,
                                                    ssl=self.ssl,
-                                                   url=f'{base}{endpoint}')
+                                                   url=f'{base}{model.endpoint}')
 
-            elif method == 'PUT':
+            elif model.method == 'PUT':
                 response = await self.session.put(auth=self.auth,
                                                   data=data,
-                                                  json=json,
-                                                  params=params,
+                                                  json=model.json or None,
+                                                  params=model.params or None,
                                                   proxy=self.proxy,
                                                   proxy_auth=self.proxy_auth,
                                                   ssl=self.ssl,
-                                                  url=f'{base}{endpoint}')
+                                                  url=f'{base}{model.endpoint}')
 
-            elif method == 'DELETE':
+            elif model.method == 'DELETE':
                 response = await self.session.delete(auth=self.auth,
                                                      data=data,
-                                                     json=json,
-                                                     params=params,
+                                                     json=model.json or None,
+                                                     params=model.params or None,
                                                      proxy=self.proxy,
                                                      proxy_auth=self.proxy_auth,
                                                      ssl=self.ssl,
-                                                     url=f'{base}{endpoint}')
+                                                     url=f'{base}{model.endpoint}')
 
-            elif method == 'CONNECT':  # todo:
+            elif model.method == 'CONNECT':  # todo:
                 raise NotImplementedError
 
-            elif method == 'OPTIONS':  # todo:
+            elif model.method == 'OPTIONS':  # todo:
                 raise NotImplementedError
 
-            elif method == 'TRACE':  # todo:
+            elif model.method == 'TRACE':  # todo:
                 raise NotImplementedError
 
-            elif method == 'PATCH':
+            elif model.method == 'PATCH':
                 response = await self.session.patch(auth=self.auth,
                                                     data=data,
-                                                    json=json,
-                                                    params=params,
+                                                    json=model.json or None,
+                                                    params=model.params or None,
                                                     proxy=self.proxy,
                                                     proxy_auth=self.proxy_auth,
                                                     ssl=self.ssl,
-                                                    url=f'{base}{endpoint}')
-
-            else:
-                logger.error(f'Method ({method}) is not a valid HTTP verb, '
-                             f'it must be one of the following\n-> {", ".join(METHODS)}')
-                raise NotImplementedError
+                                                    url=f'{base}{model.endpoint}')
 
             if self.debug or debug:
                 print(await self.request_debug(response))

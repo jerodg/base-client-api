@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.9
 """Base Client API -> Exceptions
-Copyright (C) 2019-2021 Jerod Gawne <https://github.com/jerodg/>
+Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the Server Side Public License (SSPL) as
@@ -21,10 +21,7 @@ from typing import Sized
 
 from loguru import logger
 
-from base_client_api import vprint
-
-logger.add('base_client_api.exceptions')
-logger.disable('base_client_api.exceptions')
+from base_client_api.utils import vprint
 
 
 @logger.catch

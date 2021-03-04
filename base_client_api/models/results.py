@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.9
-"""Base Client API: Models.Results
+"""Base Client API -> Models -> Results
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify
@@ -18,13 +18,13 @@ copies or substantial portions of the Software.
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 from dataclasses import dataclass, field
-from typing import List
+from typing import Any, List, Union
 
 
 @dataclass
 class Results:
     """Results from aio.ClientRequest(s)"""
-    data: List[dict]
+    data: Union[BaseException, List[dict], Any]
     success: List[dict] = field(default_factory=list)
     failure: List[dict] = field(default_factory=list)
 

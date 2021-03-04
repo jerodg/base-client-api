@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.9
-"""Base Client API: Test Banner Print
+"""Base Client API -> Tests -> Models -> Init
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify
@@ -17,15 +17,5 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-import time
 
-import pytest
-
-from base_client_api import bprint
-
-
-@pytest.mark.asyncio
-async def test_request_debug():
-    ts = time.perf_counter()
-    bprint('Test: Banner Print')
-    bprint(f'-> Completed in {(time.perf_counter() - ts):f} seconds.')
+from .requests import ListBooks

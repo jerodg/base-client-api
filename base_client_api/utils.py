@@ -22,12 +22,12 @@ from random import choice, shuffle
 from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 from typing import Any, Generator, NoReturn, Optional, Sized, Union
 
-from base_client_api import logger
+from loguru import logger
+
 from base_client_api.models import Results
 
 
-@logger.catch
-def bprint(message: str, location: str = None) -> str:
+def bprint(message: str, location: str = None) -> NoReturn:
     """Build a banner
 
     Args:
@@ -50,13 +50,13 @@ def bprint(message: str, location: str = None) -> str:
         hlf0, hlf1 = half, half + 1
 
     if location in ['top', 'above']:
-        msg = f'▛{"▘" * hlf0} {message} {"▝" * hlf1}▜'
+        msg = f'\n▛{"▘" * hlf0} {message} {"▝" * hlf1}▜'
     elif location in ['bottom', 'bot', 'below']:
-        msg = f'▙{"▖" * hlf0} {message} {"▗" * hlf1}▟'
+        msg = f'▙{"▖" * hlf0} {message} {"▗" * hlf1}▟\n'
     else:
-        msg = f'(ノಠ益ಠ)ノ彡 {message.center(132 - 19, " ")} ¯\\(◉◡◔)/¯'
+        msg = f'▌{" " * hlf0} {message} {" " * hlf1}▐'
 
-    return msg
+    print(msg)
 
 
 @logger.catch
@@ -114,7 +114,6 @@ def tprint(results: Results, requests: Optional[Any] = None, top: Optional[Union
 
     Returns:
         (NoReturn)"""
-    # todo: change to return str in lieu of printing directly
     top_hdr = f'Top {top} ' if top else ''
 
     print(f'\n{top_hdr}Success Result{"s" if len(results.success) > 1 else ""}: {len(results.success)}')

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.9
-"""Base Client API: Tests Init
+"""Base Client API -> Tests Init
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify

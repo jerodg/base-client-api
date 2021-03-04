@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.9
-"""Base Client API: Test Process Results
+"""Base Client API -> Test Process Results
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify
@@ -24,26 +24,39 @@ import pytest
 
 from base_client_api import BaseClientApi, bprint, tprint
 from base_client_api.models import Results
+from .models import ListBooks
 
 
 @pytest.mark.asyncio
 async def test_process_results():
     ts = time.perf_counter()
-    bprint('Test: Process Results')
+    bprint('Test: Process Results', 'top')
 
-    async with BaseClientApi() as bac:
-        tasks = [asyncio.create_task(bac.request(method='get',
-                                                 endpoint='http://openlibrary.org/search/lists.json',
-                                                 params={'limit':  5,
-                                                         'q':      'book',
-                                                         'offset': 0}))]
-        results = Results(data=await asyncio.gather(*tasks))
+    async with BaseClientApi() as bca:
+        lb = ListBooks()
+        results = await asyncio.gather(*[asyncio.create_task(bca.request(lb))])
 
-        assert type(results) is Results
-        assert results.success is not None
-        assert not results.failure
+        res = await bca.process_results(results=Results(data=results), data_key=lb.data_key)
 
-        processed_results = await bac.process_results(results, data_key='docs')
-        tprint(processed_results, top=5)
+        assert type(res) is Results
+        assert res.success is not None
+        assert not res.failure
 
-    bprint(f'-> Completed in {(time.perf_counter() - ts):f} seconds.')
+        tprint(res, top=5)
+
+    bprint(f'Completed in {(time.perf_counter() - ts):f} seconds.', 'bottom')
+
+
+@pytest.mark.asyncio
+async def test_request_debug():
+    ts = time.perf_counter()
+    bprint('Test: Request Debug', 'top')
+
+    async with BaseClientApi() as bca:
+        lb = ListBooks()
+        results = await asyncio.gather(*[asyncio.create_task(bca.request(lb))])
+
+        results = await bca.request_debug(results[0]['response'])
+        print(results)
+
+    bprint(f'Completed in {(time.perf_counter() - ts):f} seconds.', 'bottom')

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.9
-"""Base Client API: Models.Record
+"""Base Client API -> Models -> Record
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
 This program is free software: you can redistribute it and/or modify
@@ -21,10 +21,11 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, List, NoReturn, Optional, Union
 
-from base_client_api import logger
+from loguru import logger
+
+METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
 
 
-@logger.catch
 def sort_dict(dct: dict, reverse: Optional[bool] = False) -> dict:
     """Sort a dictionary, recursively, by keys.
 
@@ -46,7 +47,9 @@ def sort_dict(dct: dict, reverse: Optional[bool] = False) -> dict:
 @dataclass
 class Record:
     """Generic Record"""
-    method: str  # Must be a valid HTTP verb
+    cleanup: bool = False
+    sort_field: Optional[str] = None
+    sort_order: Optional[str] = None
 
     def __post_init__(self):
         if self.method.upper() not in METHODS:
@@ -80,7 +83,20 @@ class Record:
         if sort_order:
             dct = sort_dict(dct, reverse=True if sort_order.lower() == 'desc' else False)
 
-        del dct['method']
+        try:
+            del dct['cleanup']
+        except KeyError:
+            pass
+
+        try:
+            del dct['sort_field']
+        except KeyError:
+            pass
+
+        try:
+            del dct['sort_order']
+        except KeyError:
+            pass
 
         return dct
 
@@ -88,6 +104,7 @@ class Record:
         """Populates dataclass"
         Notes:
             Only works on top-level dicts"""
+        # todo: get this working with multi-level dicts
         self.__dict__.update(entries)
 
     @property
@@ -111,14 +128,34 @@ class Record:
         return None
 
     @property
-    def method(self) -> str:
+    def method(self) -> Union[str, None]:
         """Method
 
         The HTTP verb to be used
 
         Returns:
             (str)"""
-        return self.method
+        return None
+
+    @property
+    def file(self) -> Union[str, None]:
+        """File
+
+        A file path as a str
+
+        Returns:
+            (Union[str, None])"""
+        return None
+
+    @property
+    def params(self) -> Union[dict, None]:
+        """URL Parameters
+
+        If you need to pass parameters in the URL
+
+        Returns:
+            (Union[dict, None])"""
+        return None
 
 
 if __name__ == '__main__':
