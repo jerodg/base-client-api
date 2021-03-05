@@ -19,7 +19,6 @@ You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 import asyncio
 from asyncio import Semaphore
-from dataclasses import dataclass
 from json.decoder import JSONDecodeError
 from logging import DEBUG, WARNING
 from os import getenv
@@ -34,6 +33,7 @@ import aiohttp as aio
 import rapidjson
 import toml
 from loguru import logger
+from pydantic.dataclasses import dataclass
 from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
 from base_client_api.models import Results

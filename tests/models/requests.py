@@ -17,8 +17,9 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-from dataclasses import dataclass
 from typing import Union
+
+from pydantic.dataclasses import dataclass
 
 from base_client_api.models import Record
 

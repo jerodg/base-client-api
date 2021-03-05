@@ -841,4 +841,5 @@ MigrationBackup/
 # End of https://www.gitignore.io/api/vim,node,vuejs,linux,macos,emacs,python,windows,notepadpp,virtualenv,sublimetext,visualstudio,jetbrains+all
 
 # Application Specific
-logs/
+/logs/
+poetry.lock

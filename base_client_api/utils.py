@@ -23,10 +23,14 @@ from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 from typing import Any, Generator, NoReturn, Optional, Sized, Union
 
 from loguru import logger
+from pydantic import validator
 
 from base_client_api.models import Results
 
+CASE_TYPES = ['flat', 'flat_upper', 'camel', 'pascal', 'snake', 'snake_pascal', 'snake_camel', 'kebab', 'train', 'underscore_camel']
 
+
+@logger.catch
 def bprint(message: str, location: str = None) -> NoReturn:
     """Build a banner
 
@@ -57,6 +61,8 @@ def bprint(message: str, location: str = None) -> NoReturn:
         msg = f'▌{" " * hlf0} {message} {" " * hlf1}▐'
 
     print(msg)
+
+    return
 
 
 @logger.catch
@@ -135,9 +141,11 @@ def tprint(results: Results, requests: Optional[Any] = None, top: Optional[Union
         else:
             print(*requests, sep='\n')
 
+    return
+
 
 @logger.catch
-def vprint(var: Sized) -> str:
+def vprint(var: Sized, str_output: bool = True) -> Union[str, NoReturn]:
     """Variable Printer
        - Prints the name of the variable, length, and value.
        -- [<variable_name>] (<variable_length>): <variable_content>
@@ -146,6 +154,7 @@ def vprint(var: Sized) -> str:
 
     Args:
         var (object)
+        str_output (bool): If false will print instead of returning a string
 
     Returns:
         output (str)"""
@@ -170,10 +179,64 @@ def vprint(var: Sized) -> str:
             else:
                 output = f'{var_name}: {typ} = ({length}) {var_val}'
 
-            return output
-
+            if str_output:
+                return output
+            else:
+                print(output)
+                return
         else:
             logger.error('var_val is not var')
+
+
+@logger.catch()
+def convert_case(var_name: str, from_type: str = 'snake', to_type: str = 'camel') -> str:
+    """Convert Case
+
+    Converts variable names between case types
+
+    Args:
+        var_name (str):
+        from_type (str):
+        to_type (str):
+
+    References:
+        https://stackoverflow.com/questions/17326185/what-are-the-different-kinds-of-cases
+
+    Raises:
+        ValueError
+
+    Returns:
+        new_var (str)"""
+
+    # todo: handle additional case types
+    # todo: add automatic detection of source type
+
+    @validator('from_type', 'to_type')
+    def check_types(cls, value) -> str:
+        """Check Types
+
+        Validates parameters
+
+        Args:
+            cls (class):
+            value (str):
+
+        Raises:
+             ValueError
+
+        Returns:
+            value (str)"""
+        if value in CASE_TYPES:
+            return value
+        else:
+            raise ValueError(f'Case types must be one of: {CASE_TYPES}')
+
+    if from_type == 'snake':
+        words = var_name.split('_')
+    else:
+        raise ValueError('The casing provided is not handled at this time.')
+
+    return f'{words[0].lower()}{"".join(words[1:]).capitalize()}'
 
 
 if __name__ == '__main__':

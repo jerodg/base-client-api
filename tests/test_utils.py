@@ -21,7 +21,7 @@ import time
 
 import pytest
 
-from base_client_api import bprint
+from base_client_api import bprint, convert_case
 
 
 @pytest.mark.asyncio
@@ -29,4 +29,16 @@ async def test_banner_print():
     ts = time.perf_counter()
     bprint('Test: Top Print', location='top')
     bprint('Test: Center Print')
+    bprint(f'Completed in {(time.perf_counter() - ts):f} seconds.', location='bottom')
+
+
+@pytest.mark.asyncio
+async def test_convert_case():
+    ts = time.perf_counter()
+    bprint('Test: Top Print', location='top')
+
+    source = 'source_case'
+    result = convert_case(source)
+    print(f'From: {source} \n  To: {result}')
+
     bprint(f'Completed in {(time.perf_counter() - ts):f} seconds.', location='bottom')

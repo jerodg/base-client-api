@@ -18,10 +18,9 @@ copies or substantial portions of the Software.
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import Any, List, NoReturn, Optional, Union
 
-from loguru import logger
+from pydantic.dataclasses import dataclass
 
 METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
 
@@ -47,14 +46,6 @@ def sort_dict(dct: dict, reverse: Optional[bool] = False) -> dict:
 @dataclass
 class Record:
     """Generic Record"""
-    cleanup: bool = False
-    sort_field: Optional[str] = None
-    sort_order: Optional[str] = None
-
-    def __post_init__(self):
-        if self.method.upper() not in METHODS:
-            logger.error(f'Method ({self.method}) is not a valid HTTP verb, '
-                         f'it must be one of the following\n-> {", ".join(METHODS)}')
 
     def clear(self) -> NoReturn:
         """Clear
@@ -132,6 +123,7 @@ class Record:
         """Method
 
         The HTTP verb to be used
+         - Must be a valid HTTP verb as listed above in METHODS
 
         Returns:
             (str)"""
@@ -159,9 +151,9 @@ class Record:
 
     @property
     def headers(self) -> Union[dict, None]:
-        """URL Parameters
+        """Headers
 
-        If you need to pass parameters in the URL
+        If you need to pass non-default headers
 
         Returns:
             (Union[dict, None])"""

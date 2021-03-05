@@ -23,9 +23,9 @@ from loguru import logger
 from .base_client import BaseClientApi
 from .exceptions import InvalidOptionError
 from .models import Record, Results, sort_dict
-from .utils import bprint, flatten, generate_password, tprint, vprint
+from .utils import bprint, convert_case, flatten, generate_password, tprint, vprint
 
-__version__ = '1.3.0'
+__version__ = '1.4.0'
 
 # Because this is a library; use logger.enable('base_client_api) in script to see log msgs.
 logger.add(__name__)
