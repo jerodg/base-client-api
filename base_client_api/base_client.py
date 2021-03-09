@@ -22,13 +22,11 @@ from asyncio import Semaphore
 from json.decoder import JSONDecodeError
 from logging import DEBUG, WARNING
 from os import getenv
-from os.path import realpath
 from pprint import pformat
 from ssl import create_default_context, Purpose, SSLContext
 from typing import Optional, Union
 from uuid import uuid4
 
-import aiofiles
 import aiohttp as aio
 import rapidjson
 import toml
@@ -388,21 +386,6 @@ class BaseClientApi:
 
         return results
 
-    @staticmethod
-    async def file_streamer(file_path: str) -> bytes:
-        """File Streamer
-
-        Streams a file from disk.
-
-        Args:
-            file_path (str):
-
-        Returns:
-            chunk (bytes)"""
-        async with aiofiles.open(realpath(file_path), 'rb') as f:
-            while chunk := await f.read(1024):
-                yield chunk
-
     @retry(retry=retry_if_exception_type(aio.ClientError),
            wait=wait_random_exponential(multiplier=1.25, min=3, max=60),
            after=after_log(logger, DEBUG),
@@ -432,11 +415,6 @@ class BaseClientApi:
         request_id = uuid4().hex
 
         try:
-            data = {**model.data, 'file': self.file_streamer(model.file)}
-        except AttributeError:
-            data = None
-
-        try:
             base = self.cfg['URI']['Base']
         except TypeError:
             base = ''
@@ -456,7 +434,7 @@ class BaseClientApi:
 
             elif model.method == 'POST':
                 response = await self.session.post(auth=self.auth,
-                                                   data=data,
+                                                   data=model.form,
                                                    headers=model.headers or self.HDR,
                                                    json=model.body or None,
                                                    params=model.params or None,
@@ -467,7 +445,7 @@ class BaseClientApi:
 
             elif model.method == 'PUT':
                 response = await self.session.put(auth=self.auth,
-                                                  data=data,
+                                                  data=model.form,
                                                   headers=model.headers or self.HDR,
                                                   json=model.body or None,
                                                   params=model.params or None,
@@ -478,7 +456,7 @@ class BaseClientApi:
 
             elif model.method == 'DELETE':
                 response = await self.session.delete(auth=self.auth,
-                                                     data=data,
+                                                     data=model.form,
                                                      headers=model.headers or self.HDR,
                                                      json=model.body or None,
                                                      params=model.params or None,

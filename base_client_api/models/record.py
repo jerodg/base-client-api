@@ -17,10 +17,10 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from base_client_api.models.pydantic_cfg import BaseModel
-from base_client_api.utils import sort_dict
+from base_client_api.utils import file_streamer
 
 METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
 
@@ -35,54 +35,60 @@ class Record(BaseModel):
              skip_defaults: bool = None,
              exclude_unset: bool = False,
              exclude_defaults: bool = False,
-             exclude_none: bool = True,
-             cleanup: Optional[bool] = True,
-             sort_order: Optional[str] = 'asc') -> dict[str, Any]:
+             exclude_none: bool = True) -> dict:
         """Dictionary
 
         Args:
-            include (Union['AbstractSetIntStr', 'MappingIntStrAny']):
-            exclude (Union['AbstractSetIntStr', 'MappingIntStrAny']):
+            include (set):
+            exclude (set):
             by_alias (bool):
             skip_defaults (bool):
             exclude_unset (bool):
             exclude_defaults (bool):
             exclude_none (bool):
-            cleanup (bool):
-            sort_order (str): ['asc', 'desc']
 
         Returns:
             dct (Dict[str, Any])"""
-        dct = super().dict(include=include,
-                           exclude=exclude,
-                           by_alias=by_alias,
-                           skip_defaults=skip_defaults,
-                           exclude_unset=exclude_unset,
-                           exclude_defaults=exclude_defaults,
-                           exclude_none=exclude_none)
+        return super().dict(include=include,
+                            exclude=exclude,
+                            by_alias=by_alias,
+                            skip_defaults=skip_defaults,
+                            exclude_unset=exclude_unset,
+                            exclude_defaults=exclude_defaults,
+                            exclude_none=exclude_none)
 
-        if cleanup:
-            dct = {k: v for k, v in dct.items() if v is not None}
+    def json(self, *,
+             include: Optional[set] = None,
+             exclude: set = None,
+             by_alias: bool = False,
+             skip_defaults: bool = None,
+             exclude_unset: bool = False,
+             exclude_defaults: bool = False,
+             exclude_none: bool = False,
+             encoder: Optional[Callable[[Any], Any]] = None,
+             **dumps_kwargs: Any) -> str:
+        """JSON as String
 
-        if sort_order:
-            dct = sort_dict(dct, reverse=True if sort_order.lower() == 'desc' else False)
+        Args:
+            include (set):
+            exclude (set):
+            by_alias (bool):
+            skip_defaults (bool):
+            exclude_unset (bool):
+            exclude_defaults (bool):
+            exclude_none (bool):
+            encoder (Callable):
 
-        try:
-            del dct['cleanup']
-        except KeyError:
-            pass
-
-        try:
-            del dct['sort_field']
-        except KeyError:
-            pass
-
-        try:
-            del dct['sort_order']
-        except KeyError:
-            pass
-
-        return dct
+        Returns:
+            (str)"""
+        return super().json(include=include,
+                            exclude=exclude,
+                            by_alias=by_alias,
+                            skip_defaults=skip_defaults,
+                            exclude_unset=exclude_unset,
+                            exclude_defaults=exclude_defaults,
+                            exclude_none=exclude_none,
+                            encoder=encoder)
 
     @property
     def endpoint(self) -> str:
@@ -92,17 +98,17 @@ class Record(BaseModel):
 
         Returns:
             (str)"""
-        return ''
+        return '/'
 
     @property
-    def data_key(self) -> str:
+    def data_key(self) -> Optional[str]:
         """Data Key
 
         This is the key used in the return dict that holds the primary responses
 
         Returns:
             (str)"""
-        return ''
+        return None
 
     @property
     def method(self) -> str:
@@ -113,42 +119,52 @@ class Record(BaseModel):
 
         Returns:
             (str)"""
-        return ''
+        # todo: validator
+        return 'GET'
 
     @property
-    def file(self) -> str:
+    def file(self) -> Optional[str]:
         """File
 
         A file path as a str
 
         Returns:
             (str)"""
-        return ''
+        return None
 
     @property
-    def params(self) -> dict:
+    def params(self) -> Optional[str]:
         """URL Parameters
 
         If you need to pass parameters in the URL
 
         Returns:
             (dict)"""
-        return self.dict()
+        return self.json()
 
     @property
-    def headers(self) -> dict:
+    def headers(self) -> Optional[dict]:
         """Headers
 
         If you need to pass non-default headers
 
         Returns:
             (dict)"""
-        return {}
+        return None
 
     @property
-    def body(self) -> str:
+    def body(self) -> Optional[str]:
         """Request Body"""
-        return self.json(by_alias=True, exclude_none=True)
+        return None
+
+    @property
+    def form(self) -> Optional[dict]:
+        """Request Data (Form URL Encoded)"""
+        data = {}
+        if self.file:
+            data = {**data, 'file': file_streamer(self.file)}
+
+        return data if data else None
 
 
 if __name__ == '__main__':

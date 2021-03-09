@@ -18,10 +18,12 @@ copies or substantial portions of the Software.
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 import inspect
+from os.path import realpath
 from random import choice, shuffle
 from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 from typing import Any, Generator, List, NoReturn, Optional, Sized, Union
 
+from aiofiles import open
 from loguru import logger
 from rich import print
 
@@ -118,22 +120,27 @@ def tprint(results: Results, requests: Optional[Any] = None, top: Optional[Union
 
     Returns:
         (NoReturn)"""
+    top = f'[italic yellow]{top}[/italic yellow]'
     top_hdr = f'Top {top} ' if top else ''
 
-    print(f'\n{top_hdr}Success Result{"s" if len(results.success) > 1 else ""}: {len(results.success)}')
+    print(
+        f'\n{top_hdr if len(results.failure) > 1 else ""}[bold green]Success[/bold green] Result'
+        f'{"s" if len(results.success) > 1 else ""}: {len(results.success)}')
     if top:
         print(*results.success[:top], sep='\n')
     else:
         print(*results.success, sep='\n')
 
-    print(f'\n{top_hdr}Failure Result{"s" if len(results.failure) > 1 else ""}: {len(results.failure)}')
+    print(
+        f'\n{top_hdr if len(results.failure) > 1 else ""}[bold red]Failure[/bold red] Result{"s" if len(results.failure) > 1 else ""}: {len(results.failure)}')
     if top:
         print(*results.failure[:top], sep='\n')
     else:
         print(*results.failure, sep='\n')
 
     if requests:
-        print(f'\n{top_hdr}Requests Result{"s" if len(results.success) > 1 else ""}: {len(requests)}')
+        print(
+            f'\n{top_hdr if len(results.failure) > 1 else ""}Requests Result{"s" if len(results.success) > 1 else ""}: {len(requests)}')
         if top:
             print(*requests[:top], sep='\n')
         else:
@@ -203,6 +210,21 @@ def sort_dict(dct: dict, reverse: Optional[bool] = False) -> dict:
             item[1] = sort_dict(item[1], reverse=reverse)
 
     return dict(items)
+
+
+async def file_streamer(file_path: str) -> bytes:
+    """File Streamer
+
+    Streams a file from disk.
+
+    Args:
+        file_path (str):
+
+    Returns:
+        chunk (bytes)"""
+    async with open(realpath(file_path), 'rb') as f:
+        while chunk := await f.read(1024):
+            yield chunk
 
 
 if __name__ == '__main__':
