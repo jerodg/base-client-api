@@ -17,56 +17,49 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-from copy import deepcopy
-from typing import Any, List, NoReturn, Optional, Union
+from typing import Any, Optional
 
-from pydantic.dataclasses import dataclass
+from base_client_api.models.pydantic_cfg import BaseModel
+from base_client_api.utils import sort_dict
 
 METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
 
 
-def sort_dict(dct: dict, reverse: Optional[bool] = False) -> dict:
-    """Sort a dictionary, recursively, by keys.
-
-    Args:
-        dct (dict):
-        reverse (bool):
-
-    Returns:
-        dct (dict)"""
-    items: List[List[Any]] = [[k, v] for k, v in sorted(dct.items(), key=lambda x: x[0], reverse=reverse)]
-
-    for item in items:
-        if isinstance(item[1], dict):
-            item[1] = sort_dict(item[1], reverse=reverse)
-
-    return dict(items)
-
-
-@dataclass
-class Record:
+class Record(BaseModel):
     """Generic Record"""
 
-    def clear(self) -> NoReturn:
-        """Clear
-        Sets all record values to None
+    def dict(self, *,
+             include: set = None,
+             exclude: set = None,
+             by_alias: bool = True,
+             skip_defaults: bool = None,
+             exclude_unset: bool = False,
+             exclude_defaults: bool = False,
+             exclude_none: bool = True,
+             cleanup: Optional[bool] = True,
+             sort_order: Optional[str] = 'asc') -> dict[str, Any]:
+        """Dictionary
 
-        Returns:
-            (NoReturn)"""
-        for k, v in self.__dict__.items():
-            self.__dict__[k] = None
-
-    def dict(self, cleanup: Optional[bool] = True, dct: Optional[dict] = None, sort_order: Optional[str] = 'asc') -> dict:
-        """
         Args:
-            cleanup (Optional[bool]):
-            dct (Optional[dict]):
-            sort_order (Optional[str]): ASC | DESC
+            include (Union['AbstractSetIntStr', 'MappingIntStrAny']):
+            exclude (Union['AbstractSetIntStr', 'MappingIntStrAny']):
+            by_alias (bool):
+            skip_defaults (bool):
+            exclude_unset (bool):
+            exclude_defaults (bool):
+            exclude_none (bool):
+            cleanup (bool):
+            sort_order (str): ['asc', 'desc']
 
         Returns:
-            dict (dict):"""
-        if not dct:
-            dct = deepcopy(self.__dict__)
+            dct (Dict[str, Any])"""
+        dct = super().dict(include=include,
+                           exclude=exclude,
+                           by_alias=by_alias,
+                           skip_defaults=skip_defaults,
+                           exclude_unset=exclude_unset,
+                           exclude_defaults=exclude_defaults,
+                           exclude_none=exclude_none)
 
         if cleanup:
             dct = {k: v for k, v in dct.items() if v is not None}
@@ -91,13 +84,6 @@ class Record:
 
         return dct
 
-    def load(self, **entries):
-        """Populates dataclass"
-        Notes:
-            Only works on top-level dicts"""
-        # todo: get this working with multi-level dicts
-        self.__dict__.update(entries)
-
     @property
     def endpoint(self) -> str:
         """Endpoint
@@ -106,20 +92,20 @@ class Record:
 
         Returns:
             (str)"""
-        return '/'
+        return ''
 
     @property
-    def data_key(self) -> Union[str, None]:
+    def data_key(self) -> str:
         """Data Key
 
-        This is the key used in the return dict that holds the primary data
+        This is the key used in the return dict that holds the primary responses
 
         Returns:
-            (Union[str, None])"""
-        return None
+            (str)"""
+        return ''
 
     @property
-    def method(self) -> Union[str, None]:
+    def method(self) -> str:
         """Method
 
         The HTTP verb to be used
@@ -127,37 +113,42 @@ class Record:
 
         Returns:
             (str)"""
-        return None
+        return ''
 
     @property
-    def file(self) -> Union[str, None]:
+    def file(self) -> str:
         """File
 
         A file path as a str
 
         Returns:
-            (Union[str, None])"""
-        return None
+            (str)"""
+        return ''
 
     @property
-    def params(self) -> Union[dict, None]:
+    def params(self) -> dict:
         """URL Parameters
 
         If you need to pass parameters in the URL
 
         Returns:
-            (Union[dict, None])"""
-        return None
+            (dict)"""
+        return self.dict()
 
     @property
-    def headers(self) -> Union[dict, None]:
+    def headers(self) -> dict:
         """Headers
 
         If you need to pass non-default headers
 
         Returns:
-            (Union[dict, None])"""
-        return None
+            (dict)"""
+        return {}
+
+    @property
+    def body(self) -> str:
+        """Request Body"""
+        return self.json(by_alias=True, exclude_none=True)
 
 
 if __name__ == '__main__':

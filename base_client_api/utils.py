@@ -20,14 +20,12 @@ If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 import inspect
 from random import choice, shuffle
 from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
-from typing import Any, Generator, NoReturn, Optional, Sized, Union
+from typing import Any, Generator, List, NoReturn, Optional, Sized, Union
 
 from loguru import logger
-from pydantic import validator
+from rich import print
 
-from base_client_api.models import Results
-
-CASE_TYPES = ['flat', 'flat_upper', 'camel', 'pascal', 'snake', 'snake_pascal', 'snake_camel', 'kebab', 'train', 'underscore_camel']
+from base_client_api.models.results import Results
 
 
 @logger.catch
@@ -188,55 +186,23 @@ def vprint(var: Sized, str_output: bool = True) -> Union[str, NoReturn]:
             logger.error('var_val is not var')
 
 
-@logger.catch()
-def convert_case(var_name: str, from_type: str = 'snake', to_type: str = 'camel') -> str:
-    """Convert Case
-
-    Converts variable names between case types
+@logger.catch
+def sort_dict(dct: dict, reverse: Optional[bool] = False) -> dict:
+    """Sort a dictionary, recursively, by keys.
 
     Args:
-        var_name (str):
-        from_type (str):
-        to_type (str):
-
-    References:
-        https://stackoverflow.com/questions/17326185/what-are-the-different-kinds-of-cases
-
-    Raises:
-        ValueError
+        dct (dict):
+        reverse (bool):
 
     Returns:
-        new_var (str)"""
+        (dict)"""
+    items: List[List[dict]] = [[k, v] for k, v in sorted(dct.items(), key=lambda x: x[0], reverse=reverse)]
 
-    # todo: handle additional case types
-    # todo: add automatic detection of source type
+    for item in items:
+        if isinstance(item[1], dict):
+            item[1] = sort_dict(item[1], reverse=reverse)
 
-    @validator('from_type', 'to_type')
-    def check_types(cls, value) -> str:
-        """Check Types
-
-        Validates parameters
-
-        Args:
-            cls (class):
-            value (str):
-
-        Raises:
-             ValueError
-
-        Returns:
-            value (str)"""
-        if value in CASE_TYPES:
-            return value
-        else:
-            raise ValueError(f'Case types must be one of: {CASE_TYPES}')
-
-    if from_type == 'snake':
-        words = var_name.split('_')
-    else:
-        raise ValueError('The casing provided is not handled at this time.')
-
-    return f'{words[0].lower()}{"".join(words[1:]).capitalize()}'
+    return dict(items)
 
 
 if __name__ == '__main__':

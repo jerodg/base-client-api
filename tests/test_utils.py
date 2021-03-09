@@ -20,8 +20,10 @@ If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 import time
 
 import pytest
+from rich import print
 
-from base_client_api import bprint, convert_case
+from base_client_api.models.pydantic_cfg import convert_case
+from base_client_api.utils import bprint
 
 
 @pytest.mark.asyncio
@@ -40,5 +42,6 @@ async def test_convert_case():
     source = 'source_case'
     result = convert_case(source)
     print(f'From: {source} \n  To: {result}')
+    assert result == 'sourceCase'
 
     bprint(f'Completed in {(time.perf_counter() - ts):f} seconds.', location='bottom')

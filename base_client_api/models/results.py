@@ -17,17 +17,18 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-from typing import List
+from dataclasses import dataclass
+from typing import Any, List
 
-from pydantic.dataclasses import dataclass
+from pydantic import Field
 
 
 @dataclass
 class Results:
     """Results from aio.ClientRequest(s)"""
-    data: List[dict]
-    success: List[dict]
-    failure: List[dict]
+    responses: Any
+    success: List[dict] = Field(default_factory=list)
+    failure: List[dict] = Field(default_factory=list)
 
     @property
     def dict(self) -> dict:

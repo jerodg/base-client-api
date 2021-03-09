@@ -17,32 +17,30 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-import asyncio
 import time
+from os.path import realpath
 
 import pytest
 
-from base_client_api import BaseClientApi, bprint, tprint
-from base_client_api.models import Results
-from .models import ListBooks
+from base_client_api.base_client import BaseClientApi
+from base_client_api.models.results import Results
+from base_client_api.utils import bprint, tprint
+from .models.reqs import BooksListAll
 
 
 @pytest.mark.asyncio
-async def test_process_results():
+async def test_make_request():
     ts = time.perf_counter()
-    bprint('Test: Process Results', 'top')
+    bprint('Test: Make Request/Process Results', 'top')
 
-    async with BaseClientApi() as bca:
-        lb = ListBooks()
-        results = await asyncio.gather(*[asyncio.create_task(bca.request(lb))])
+    async with BaseClientApi(cfg=realpath('./examples/config.toml')) as bca:
+        results = await bca.make_request(BooksListAll())
 
-        res = await bca.process_results(results=Results(data=results), data_key=lb.data_key)
+        assert type(results) is Results
+        assert results.success is not None
+        assert not results.failure
 
-        assert type(res) is Results
-        assert res.success is not None
-        assert not res.failure
-
-        tprint(res, top=5)
+        tprint(results, top=5)
 
     bprint(f'Completed in {(time.perf_counter() - ts):f} seconds.', 'bottom')
 
@@ -53,10 +51,6 @@ async def test_request_debug():
     bprint('Test: Request Debug', 'top')
 
     async with BaseClientApi() as bca:
-        lb = ListBooks()
-        results = await asyncio.gather(*[asyncio.create_task(bca.request(lb))])
-
-        results = await bca.request_debug(results[0]['response'])
-        print(results)
+        await bca.make_request(BooksListAll(), debug=True)
 
     bprint(f'Completed in {(time.perf_counter() - ts):f} seconds.', 'bottom')

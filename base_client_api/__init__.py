@@ -18,15 +18,12 @@ copies or substantial portions of the Software.
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 
+from sys import stdout
+
 from loguru import logger
 
-from .base_client import BaseClientApi
-from .exceptions import InvalidOptionError
-from .models import Record, Results, sort_dict
-from .utils import bprint, convert_case, flatten, generate_password, tprint, vprint
-
-__version__ = '1.4.0'
+__version__ = '0.5.0'
 
 # Because this is a library; use logger.enable('base_client_api) in script to see log msgs.
-logger.add(__name__)
+logger.add(sink=stdout)
 logger.disable(__name__)

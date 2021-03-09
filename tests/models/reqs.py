@@ -19,13 +19,11 @@ You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 from typing import Union
 
-from pydantic.dataclasses import dataclass
-
-from base_client_api.models import Record
+from base_client_api.models.record import Record
 
 
-@dataclass
-class ListBooks(Record):
+class BooksListAll(Record):
+    """Books -> List All"""
     limit: int = 5
     q: str = 'book'
     offset: int = 0
@@ -64,7 +62,7 @@ class ListBooks(Record):
     def data_key(self) -> Union[str, None]:
         """Data Key
 
-        This is the key used in the return dict that holds the primary data
+        This is the key used in the return dict that holds the primary responses
 
         Returns:
             (Union[str, None])"""

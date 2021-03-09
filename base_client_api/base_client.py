@@ -34,14 +34,14 @@ import rapidjson
 import toml
 from loguru import logger
 from pydantic.dataclasses import dataclass
+from rich import print
 from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
-from base_client_api.models import Results
+from base_client_api.models.results import Results
 
 METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
 
 
-# todo: update tenacity
 # todo: use terminal colors module
 
 
@@ -284,27 +284,25 @@ class BaseClientApi:
         hdr = '\n\t\t'.join(f'{k}: {v}' for k, v in response.headers.items())
         try:
             json = await response.json(content_type=None)
-            json_note = 'Results length is greater than five; truncating...' if len(json) > 5 else None
-            json = pformat(json[:5], sort_dicts=False)
+            json = pformat(json, sort_dicts=False)
             text = None
         except JSONDecodeError:
             json = None
-            json_note = None
             text = await response.text()
 
         # todo: convert to a model
-        return f'\nHTTP/{response.version.major}.{response.version.minor}, {response.method}-{response.status}[{response.reason}]' \
-               f'\n\tRequest-URL: \n\t\t{response.url}\n' \
-               f'\n\tHeader: \n\t\t{hdr}\n' \
-               f'\n\tResponse-JSON: {json_note}\n{json}\n' \
-               f'\n\tResponse-TEXT: \n\t\t{text}\n'
+        return f'\n[bold yellow]HTTP[/bold yellow]/{response.version.major}.{response.version.minor}, {response.method}-' \
+               f'{response.status}[{response.reason}]' \
+               f'\n\t[bold yellow]Request-URL:[/bold yellow] \n\t\t{response.url}\n' \
+               f'\n\t[bold yellow]Header:[/bold yellow] \n\t\t{hdr}\n' \
+               f'\n\t[bold yellow]Response-JSON:[/bold yellow] \n{json}\n' \
+               f'\n\t[bold yellow]Response-TEXT:[/bold yellow] \n\t\t{text}\n'
 
     async def process_results(self, results: Results,
                               data_key: Optional[str] = None,
                               cleanup: bool = False,
                               sort_field: Optional[str] = None,
-                              sort_order: Optional[str] = None,
-                              remove_request_id: bool = True) -> Results:
+                              sort_order: Optional[str] = None) -> Results:
         """Process Results from aio.ClientRequest(s)
 
         Args:
@@ -320,8 +318,8 @@ class BaseClientApi:
 
         Returns:
             results (Results): """
-        for result in results.data:
-            rid = {'request_id': result['request_id']}
+        for result in results.responses:
+            # rid = {'request_id': result['request_id']}
             status = result['response'].status
 
             try:
@@ -354,16 +352,16 @@ class BaseClientApi:
                 try:
                     d = response[data_key]
                     if type(d) is list:
-                        data = [{**r, **rid} for r in d]
+                        data = [{**r} for r in d]
                     else:
                         data = response
                 except (KeyError, TypeError):
                     if type(response) is list:
-                        data = [{**r, **rid} for r in response]
+                        data = [{**r} for r in response]
                     elif type(response) is int:
                         data = [response]
                     else:
-                        data = {**response, **rid}
+                        data = {**response}
 
                 if type(data) is list:
                     results.success.extend(data)
@@ -372,12 +370,12 @@ class BaseClientApi:
 
             elif status > 299:
                 try:
-                    results.failure.append({**response, **rid})
+                    results.failure.append({**response})
                 except TypeError:
                     results.failure.append(response)
 
         if cleanup:
-            del results.data
+            del results.responses
             results.success = [dict(sorted({k: v for k, v in rec.items() if v is not None}.items())) for rec in results.success]
 
         if sort_order:
@@ -387,11 +385,6 @@ class BaseClientApi:
             results.success.sort(key=lambda k: k[sort_field], reverse=True if sort_order == 'desc' else False)
         elif sort_order:
             results.success.sort(reverse=True if sort_order == 'desc' else False)
-
-        if remove_request_id:
-            for result in results.success:
-                if not type(result) is int:
-                    del result['request_id']
 
         return results
 
@@ -438,9 +431,9 @@ class BaseClientApi:
             (dict)"""
         request_id = uuid4().hex
 
-        if file := model.file:
-            data = {**model.data, 'file': self.file_streamer(file)}
-        else:
+        try:
+            data = {**model.data, 'file': self.file_streamer(model.file)}
+        except AttributeError:
             data = None
 
         try:
@@ -465,7 +458,7 @@ class BaseClientApi:
                 response = await self.session.post(auth=self.auth,
                                                    data=data,
                                                    headers=model.headers or self.HDR,
-                                                   json=model.json or None,
+                                                   json=model.body or None,
                                                    params=model.params or None,
                                                    proxy=self.proxy,
                                                    proxy_auth=self.proxy_auth,
@@ -476,7 +469,7 @@ class BaseClientApi:
                 response = await self.session.put(auth=self.auth,
                                                   data=data,
                                                   headers=model.headers or self.HDR,
-                                                  json=model.json or None,
+                                                  json=model.body or None,
                                                   params=model.params or None,
                                                   proxy=self.proxy,
                                                   proxy_auth=self.proxy_auth,
@@ -487,7 +480,7 @@ class BaseClientApi:
                 response = await self.session.delete(auth=self.auth,
                                                      data=data,
                                                      headers=model.headers or self.HDR,
-                                                     json=model.json or None,
+                                                     json=model.body or None,
                                                      params=model.params or None,
                                                      proxy=self.proxy,
                                                      proxy_auth=self.proxy_auth,
@@ -507,7 +500,7 @@ class BaseClientApi:
                 response = await self.session.patch(auth=self.auth,
                                                     data=data,
                                                     headers=model.headers or self.HDR,
-                                                    json=model.json or None,
+                                                    json=model.body or None,
                                                     params=model.params or None,
                                                     proxy=self.proxy,
                                                     proxy_auth=self.proxy_auth,
@@ -532,7 +525,7 @@ class BaseClientApi:
         It can be overridden to provide additional functionality.
 
         Args:
-            models (dataclass):
+            models (dataclass): If sending a list of models they must be all of the same type
             debug (bool):
 
         Returns:
@@ -542,7 +535,7 @@ class BaseClientApi:
 
         results = await asyncio.gather(*[asyncio.create_task(self.request(m, debug=debug)) for m in models])
 
-        return await self.process_results(results=Results(data=results), data_key=models[0].data_key)
+        return await self.process_results(results=Results(responses=results), data_key=models[0].data_key)
 
 
 if __name__ == '__main__':
