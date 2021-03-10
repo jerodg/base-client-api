@@ -60,11 +60,11 @@ class Record(BaseModel):
     def json(self, *,
              include: Optional[set] = None,
              exclude: set = None,
-             by_alias: bool = False,
+             by_alias: bool = True,
              skip_defaults: bool = None,
              exclude_unset: bool = False,
              exclude_defaults: bool = False,
-             exclude_none: bool = False,
+             exclude_none: bool = True,
              encoder: Optional[Callable[[Any], Any]] = None,
              **dumps_kwargs: Any) -> str:
         """JSON as String
@@ -101,7 +101,7 @@ class Record(BaseModel):
         return '/'
 
     @property
-    def data_key(self) -> Optional[str]:
+    def response_key(self) -> Optional[str]:
         """Data Key
 
         This is the key used in the return dict that holds the primary responses
@@ -111,7 +111,7 @@ class Record(BaseModel):
         return None
 
     @property
-    def method(self) -> str:
+    def method(self) -> Optional[str]:
         """Method
 
         The HTTP verb to be used
@@ -119,21 +119,16 @@ class Record(BaseModel):
 
         Returns:
             (str)"""
-        # todo: validator
-        return 'GET'
-
-    @property
-    def file(self) -> Optional[str]:
-        """File
-
-        A file path as a str
-
-        Returns:
-            (str)"""
+        # @validator
+        # def check_method(value: str):
+        #     if value not in METHODS:
+        #         raise ValueError(f'Method must be one of: {METHODS}')
+        #     else:
+        #         return value
         return None
 
     @property
-    def params(self) -> Optional[str]:
+    def parameters(self) -> Optional[str]:
         """URL Parameters
 
         If you need to pass parameters in the URL
@@ -153,16 +148,24 @@ class Record(BaseModel):
         return None
 
     @property
-    def body(self) -> Optional[str]:
+    def json_body(self) -> Optional[str]:
         """Request Body"""
         return None
 
-    @property
-    def form(self) -> Optional[dict]:
-        """Request Data (Form URL Encoded)"""
+    @staticmethod
+    def form_data(file: Optional[str]) -> Optional[dict]:
+        """Request Body
+           - Multipart Form or Form URL Encoded"
+
+        Args:
+            file (str): Full path of file
+
+        Returns:
+            (Optional[dict])
+        """
         data = {}
-        if self.file:
-            data = {**data, 'file': file_streamer(self.file)}
+        if file:
+            data = {**data, 'file': file_streamer(file)}
 
         return data if data else None
 

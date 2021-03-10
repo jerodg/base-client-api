@@ -120,27 +120,24 @@ def tprint(results: Results, requests: Optional[Any] = None, top: Optional[Union
 
     Returns:
         (NoReturn)"""
-    top = f'[italic yellow]{top}[/italic yellow]'
     top_hdr = f'Top {top} ' if top else ''
 
-    print(
-        f'\n{top_hdr if len(results.failure) > 1 else ""}[bold green]Success[/bold green] Result'
-        f'{"s" if len(results.success) > 1 else ""}: {len(results.success)}')
+    print(f'\n{top_hdr if len(results.success) > 1 else ""}[bold green]Success Result{"s" if len(results.success) > 1 else ""}'
+          f'[/bold green] of {len(results.success)} Returned:')
     if top:
         print(*results.success[:top], sep='\n')
     else:
         print(*results.success, sep='\n')
 
-    print(
-        f'\n{top_hdr if len(results.failure) > 1 else ""}[bold red]Failure[/bold red] Result{"s" if len(results.failure) > 1 else ""}: {len(results.failure)}')
+    print(f'\n{top_hdr if len(results.failure) > 1 else ""}[bold red]Failure Result{"s" if len(results.failure) > 1 else ""}'
+          f'[/bold red] of {len(results.failure)} Returned:')
     if top:
         print(*results.failure[:top], sep='\n')
     else:
         print(*results.failure, sep='\n')
 
     if requests:
-        print(
-            f'\n{top_hdr if len(results.failure) > 1 else ""}Requests Result{"s" if len(results.success) > 1 else ""}: {len(requests)}')
+        print(f'\n{top_hdr}Requests Result{"s" if len(results.success) > 1 else ""}: {len(requests)}')
         if top:
             print(*requests[:top], sep='\n')
         else:

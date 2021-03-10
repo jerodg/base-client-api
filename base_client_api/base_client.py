@@ -35,6 +35,7 @@ from pydantic.dataclasses import dataclass
 from rich import print
 from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
+from base_client_api.models.record import Record
 from base_client_api.models.results import Results
 
 METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
@@ -297,7 +298,7 @@ class BaseClientApi:
                f'\n\t[bold yellow]Response-TEXT:[/bold yellow] \n\t\t{text}\n'
 
     async def process_results(self, results: Results,
-                              data_key: Optional[str] = None,
+                              response_key: Optional[str] = None,
                               cleanup: bool = False,
                               sort_field: Optional[str] = None,
                               sort_order: Optional[str] = None) -> Results:
@@ -307,7 +308,7 @@ class BaseClientApi:
         results (List[Union[dct, aio.ClientResponse]]):
         success (List[dct]):
         failure (List[dct]):
-        data_key (Optional[str]):
+        response_key (Optional[str]):
         cleanup (Optional[bool]): Default: True
             Removes raw results, Removes empty (None) keys, and Sorts Keys of each record.
         sort_field (Optional[str]): Top incident_level dictionary key to sort on
@@ -317,7 +318,6 @@ class BaseClientApi:
         Returns:
             results (Results): """
         for result in results.responses:
-            # rid = {'request_id': result['request_id']}
             status = result['response'].status
 
             try:
@@ -348,7 +348,7 @@ class BaseClientApi:
 
             if 200 <= status <= 299:
                 try:
-                    d = response[data_key]
+                    d = response[response_key]
                     if type(d) is list:
                         data = [{**r} for r in d]
                     else:
@@ -391,7 +391,7 @@ class BaseClientApi:
            after=after_log(logger, DEBUG),
            stop=stop_after_attempt(5),
            before_sleep=before_sleep_log(logger, WARNING))
-    async def request(self, model: dataclass, debug: Optional[bool] = False) -> dict:
+    async def request(self, model: Record, debug: Optional[bool] = False) -> dict:
         """Multi-purpose aiohttp request function
         Args:
             model (dataclass): Optionally defined:
@@ -424,7 +424,7 @@ class BaseClientApi:
                 response = await self.session.get(auth=self.auth,
                                                   headers=model.headers or self.HDR,
                                                   url=f'{base}{model.endpoint}',
-                                                  params=model.params,
+                                                  params=model.parameters,
                                                   proxy=self.proxy,
                                                   proxy_auth=self.proxy_auth,
                                                   ssl=self.ssl)
@@ -434,10 +434,10 @@ class BaseClientApi:
 
             elif model.method == 'POST':
                 response = await self.session.post(auth=self.auth,
-                                                   data=model.form,
-                                                   headers=model.headers or self.HDR,
-                                                   json=model.body or None,
-                                                   params=model.params or None,
+                                                   data=model.form_data,
+                                                   headers=model.headers,
+                                                   json=model.json_body,
+                                                   params=model.parameters,
                                                    proxy=self.proxy,
                                                    proxy_auth=self.proxy_auth,
                                                    ssl=self.ssl,
@@ -445,10 +445,10 @@ class BaseClientApi:
 
             elif model.method == 'PUT':
                 response = await self.session.put(auth=self.auth,
-                                                  data=model.form,
-                                                  headers=model.headers or self.HDR,
-                                                  json=model.body or None,
-                                                  params=model.params or None,
+                                                  data=model.form_data,
+                                                  headers=model.headers,
+                                                  json=model.json_body,
+                                                  params=model.parameters,
                                                   proxy=self.proxy,
                                                   proxy_auth=self.proxy_auth,
                                                   ssl=self.ssl,
@@ -456,10 +456,10 @@ class BaseClientApi:
 
             elif model.method == 'DELETE':
                 response = await self.session.delete(auth=self.auth,
-                                                     data=model.form,
-                                                     headers=model.headers or self.HDR,
-                                                     json=model.body or None,
-                                                     params=model.params or None,
+                                                     data=model.form_data,
+                                                     headers=model.headers,
+                                                     json=model.json_body,
+                                                     params=model.parameters,
                                                      proxy=self.proxy,
                                                      proxy_auth=self.proxy_auth,
                                                      ssl=self.ssl,
@@ -476,10 +476,10 @@ class BaseClientApi:
 
             elif model.method == 'PATCH':
                 response = await self.session.patch(auth=self.auth,
-                                                    data=data,
-                                                    headers=model.headers or self.HDR,
-                                                    json=model.body or None,
-                                                    params=model.params or None,
+                                                    data=model.form_data,
+                                                    headers=model.headers,
+                                                    json=model.json_body,
+                                                    params=model.parameters,
                                                     proxy=self.proxy,
                                                     proxy_auth=self.proxy_auth,
                                                     ssl=self.ssl,
@@ -494,7 +494,8 @@ class BaseClientApi:
                 logger.error(self.request_debug(response))
                 raise aio.ClientError
 
-            return {'request_id': request_id, 'response': response}
+            # todo: change to plain response
+            return {'response': response}
 
     async def make_request(self, models: dataclass, debug: bool = False) -> Results:
         """Make Request
@@ -513,7 +514,7 @@ class BaseClientApi:
 
         results = await asyncio.gather(*[asyncio.create_task(self.request(m, debug=debug)) for m in models])
 
-        return await self.process_results(results=Results(responses=results), data_key=models[0].data_key)
+        return await self.process_results(results=Results(responses=results), response_key=models[0].response_key)
 
 
 if __name__ == '__main__':

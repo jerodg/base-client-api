@@ -22,7 +22,7 @@ import time
 import pytest
 from rich import print
 
-from base_client_api.models.pydantic_cfg import convert_case
+from base_client_api.models.pydantic_cfg import pascal_case
 from base_client_api.utils import bprint
 
 
@@ -40,8 +40,13 @@ async def test_convert_case():
     bprint('Test: Top Print', location='top')
 
     source = 'source_case'
-    result = convert_case(source)
+    result = pascal_case(source)
     print(f'From: {source} \n  To: {result}')
     assert result == 'sourceCase'
+
+    source = 'activation_code_validity'
+    result = pascal_case(source)
+    print(f'From: {source} \n  To: {result}')
+    assert result == 'activationCodeValidity'
 
     bprint(f'Completed in {(time.perf_counter() - ts):f} seconds.', location='bottom')

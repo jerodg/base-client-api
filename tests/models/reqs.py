@@ -17,16 +17,72 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-from typing import Union
+from typing import Optional
 
 from base_client_api.models.record import Record
 
 
 class BooksListAll(Record):
     """Books -> List All"""
-    limit: int = 5
-    q: str = 'book'
-    offset: int = 0
+    q: str
+    limit: Optional[int]
+    offset: Optional[int]
+
+    @property
+    def endpoint(self) -> str:
+        """Endpoint
+
+        The suffix end of the URI
+
+        Returns:
+            (str)"""
+        return '/'
+
+    @property
+    def response_key(self) -> Optional[str]:
+        """Data Key
+
+        This is the key used in the return dict that holds the primary responses
+
+        Returns:
+            (str)"""
+        return None
+
+    @property
+    def method(self) -> str:
+        """Method
+
+        The HTTP verb to be used
+         - Must be a valid HTTP verb as listed above in METHODS
+
+        Returns:
+            (str)"""
+        return 'GET'
+
+    @property
+    def parameters(self) -> Optional[dict]:
+        """URL Parameters
+
+        If you need to pass parameters in the URL
+
+        Returns:
+            (dict)"""
+        return self.dict()
+
+    @property
+    def headers(self) -> Optional[dict]:
+        """Headers
+
+        If you need to pass non-default headers
+
+        Returns:
+            (dict)"""
+        return None
+
+    @property
+    def json_body(self) -> Optional[str]:
+        """Request Body"""
+        return None
 
     @property
     def endpoint(self) -> str:
@@ -39,27 +95,7 @@ class BooksListAll(Record):
         return 'http://openlibrary.org/search/lists.json'
 
     @property
-    def method(self) -> Union[str, None]:
-        """Method
-
-        The HTTP verb to be used
-
-        Returns:
-            (str)"""
-        return 'GET'
-
-    @property
-    def params(self) -> Union[dict, None]:
-        """URL Parameters
-
-        If you need to pass parameters in the URL
-
-        Returns:
-            (Union[dict, None])"""
-        return self.dict()
-
-    @property
-    def data_key(self) -> Union[str, None]:
+    def response_key(self) -> Optional[str]:
         """Data Key
 
         This is the key used in the return dict that holds the primary responses

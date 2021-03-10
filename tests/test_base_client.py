@@ -34,7 +34,9 @@ async def test_make_request():
     bprint('Test: Make Request/Process Results', 'top')
 
     async with BaseClientApi(cfg=realpath('./examples/config.toml')) as bca:
-        results = await bca.make_request(BooksListAll())
+        results = await bca.make_request(BooksListAll(q='book',
+                                                      limit=25,
+                                                      offset=0))
 
         assert type(results) is Results
         assert results.success is not None
@@ -51,6 +53,8 @@ async def test_request_debug():
     bprint('Test: Request Debug', 'top')
 
     async with BaseClientApi() as bca:
-        await bca.make_request(BooksListAll(), debug=True)
+        await bca.make_request(BooksListAll(q='book',
+                                            limit=25,
+                                            offset=0), debug=True)
 
     bprint(f'Completed in {(time.perf_counter() - ts):f} seconds.', 'bottom')

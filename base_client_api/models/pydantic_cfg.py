@@ -23,15 +23,13 @@ from rapidjson import dumps, loads
 CASE_TYPES = ['flat', 'flat_upper', 'camel', 'pascal', 'snake', 'snake_pascal', 'snake_camel', 'kebab', 'train', 'underscore_camel']
 
 
-def convert_case(var_name: str, from_type: str = 'snake', to_type: str = 'pascal') -> str:
+def pascal_case(value) -> str:
     """Convert Case
 
-    Converts variable names between case types
+    Converts snake case to pascal case for JSON
 
     Args:
-        var_name (str):
-        from_type (str):
-        to_type (str):
+        value (str):
 
     References:
         https://stackoverflow.com/questions/17326185/what-are-the-different-kinds-of-cases
@@ -40,38 +38,12 @@ def convert_case(var_name: str, from_type: str = 'snake', to_type: str = 'pascal
         ValueError
 
     Returns:
-        new_var (str)"""
+        (str)"""
+    words = value.split('_')
+    new_words = [words[0]]
+    [new_words.append(x.capitalize()) for x in words[1:]]
 
-    # todo: handle additional case types
-    # todo: add automatic detection of source type
-
-    # @validator('from_type', 'to_type')
-    # def check_types(cls, value) -> str:
-    #     """Check Types
-    #
-    #     Validates parameters
-    #
-    #     Args:
-    #         cls (class):
-    #         value (str):
-    #
-    #     Raises:
-    #          ValueError
-    #
-    #     Returns:
-    #         value (str)"""
-    #     if value in CASE_TYPES:
-    #         return value
-    #     else:
-    #         raise ValueError(f'Case types must be one of: {CASE_TYPES}')
-
-    if from_type == 'snake':
-        words = var_name.split('_')
-    else:
-        words = None
-
-    if to_type == 'pascal':
-        return f'{words[0].lower()}{"".join(words[1:]).capitalize()}'
+    return ''.join(new_words)
 
 
 class BaseModel(PydanticBaseModel):
@@ -79,6 +51,6 @@ class BaseModel(PydanticBaseModel):
         """MyConfig
 
         Pydantic configuration"""
-        alias_generator = convert_case
+        alias_generator = pascal_case
         json_loads = loads
         json_dumps = dumps
