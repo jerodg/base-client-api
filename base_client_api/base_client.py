@@ -35,6 +35,7 @@ from pydantic.dataclasses import dataclass
 from rich import print
 from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
+from base_client_api.exceptions import InvalidOptionError
 from base_client_api.models.record import Record
 from base_client_api.models.results import Results
 
@@ -295,6 +296,9 @@ class BaseClientApi:
         except JSONDecodeError:
             json = None
             text = await response.text()
+        except AttributeError as ae:
+            logger.warning(ae)
+            print('response_error:', response)
 
         # todo: convert to a template
         return f'\n[bold yellow]HTTP[/bold yellow]/{response.version.major}.{response.version.minor}, {response.method}-' \
@@ -362,7 +366,7 @@ class BaseClientApi:
                 response = await result['response'].text(encoding='utf-8')
 
             # This is for when the 'Content-Type' is specified as non-text but is actually returned as a string by the API.
-            if type(response) == str:
+            if type(response) == str and len(response):
                 response = {'text_plain': await result['response'].text(encoding='utf-8')}
 
             if 200 <= status <= 299:
@@ -410,7 +414,7 @@ class BaseClientApi:
            after=after_log(logger, DEBUG),
            stop=stop_after_attempt(5),
            before_sleep=before_sleep_log(logger, WARNING))
-    async def request(self, model: Record, debug: Optional[bool] = False) -> dict:
+    async def request(self, model: Record, debug: Optional[bool] = False) -> Optional[dict]:
         """Multi-purpose aiohttp request function
         Args:
             model (dataclass): Optionally defined:
@@ -427,10 +431,16 @@ class BaseClientApi:
             https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol#Request_methods
 
         Raises:
+            InvalidOptionError
             NotImplementedError
 
         Returns:
-            (dict)"""
+            (Optional[dict])"""
+        try:
+            assert model.method in METHODS
+        except AssertionError:
+            raise InvalidOptionError(model.method, METHODS)
+
         try:
             base = self.cfg['URI']['Base']
         except TypeError:
@@ -493,7 +503,7 @@ class BaseClientApi:
 
             elif model.method == 'PATCH':
                 response = await self.session.patch(auth=self.auth,
-                                                    # data=model.form_data,
+                                                    # data=model.form_data,  # todo: implement this
                                                     headers=model.headers,
                                                     json=model.json_body,
                                                     params=model.parameters,

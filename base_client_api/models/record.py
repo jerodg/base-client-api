@@ -129,7 +129,7 @@ class Record(BaseModel):
 
         Returns:
             (dict)"""
-        return self.json()
+        return self.json(exclude={'body'})
 
     @property
     def headers(self) -> Optional[dict]:
