@@ -20,13 +20,13 @@ If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 from typing import Any, Callable, Optional
 
 from base_client_api.models.pydantic_cfg import BaseModel
-from base_client_api.utils import file_streamer
 
 METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
 
 
 class Record(BaseModel):
     """Generic Record"""
+    body: Optional[BaseModel]
 
     def dict(self, *,
              include: set = None,
@@ -119,12 +119,6 @@ class Record(BaseModel):
 
         Returns:
             (str)"""
-        # @validator
-        # def check_method(value: str):
-        #     if value not in METHODS:
-        #         raise ValueError(f'Method must be one of: {METHODS}')
-        #     else:
-        #         return value
         return None
 
     @property
@@ -148,26 +142,29 @@ class Record(BaseModel):
         return None
 
     @property
-    def json_body(self) -> Optional[str]:
+    def json_body(self) -> Optional[dict]:
         """Request Body"""
-        return None
+        if self.body:
+            return self.body.dict()
 
-    @staticmethod
-    def form_data(file: Optional[str]) -> Optional[dict]:
-        """Request Body
-           - Multipart Form or Form URL Encoded"
+        return self.dict()
 
-        Args:
-            file (str): Full path of file
-
-        Returns:
-            (Optional[dict])
-        """
-        data = {}
-        if file:
-            data = {**data, 'file': file_streamer(file)}
-
-        return data if data else None
+    # @staticmethod
+    # def form_data(file: Optional[str]) -> Optional[dict]:
+    #     """Request Body
+    #        - Multipart Form or Form URL Encoded"
+    #
+    #     Args:
+    #         file (str): Full path of file
+    #
+    #     Returns:
+    #         (Optional[dict])
+    #     """
+    #     data = None
+    #     if file:
+    #         data = {**data, 'file': file_streamer(file)}
+    #
+    #     return data if data else {}
 
 
 if __name__ == '__main__':

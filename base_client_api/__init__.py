@@ -24,5 +24,5 @@ from loguru import logger
 __version__ = '2.0.0'
 
 # Because this is a library; use logger.enable('base_client_api) in script to see log msgs.
-logger.add(sink=stdout)
+logger.add(sink=stdout, colorize=True, enqueue=True)
 logger.disable(__name__)

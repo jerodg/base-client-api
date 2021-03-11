@@ -120,7 +120,7 @@ def tprint(results: Results, requests: Optional[Any] = None, top: Optional[Union
 
     Returns:
         (NoReturn)"""
-    top_hdr = f'Top {top} ' if top else ''
+    top_hdr = f'Top {top} ' if top else '1'
 
     print(f'\n{top_hdr if len(results.success) > 1 else ""}[bold green]Success Result{"s" if len(results.success) > 1 else ""}'
           f'[/bold green] of {len(results.success)} Returned:')

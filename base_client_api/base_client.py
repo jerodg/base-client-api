@@ -25,7 +25,7 @@ from os import getenv
 from pprint import pformat
 from ssl import create_default_context, Purpose, SSLContext
 from typing import Optional, Union
-from uuid import uuid4
+from urllib.parse import unquote_plus
 
 import aiohttp as aio
 import rapidjson
@@ -41,7 +41,9 @@ from base_client_api.models.results import Results
 METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
 
 
-# todo: use terminal colors module
+# todo: handle form data
+# todo: add ability to use plugins in-lieu of child classes
+# todo: investigate specifying response schema (view) in Record() to replace response_key property
 
 
 class BaseClientApi:
@@ -280,7 +282,12 @@ class BaseClientApi:
 
         Returns:
             (str)"""
-        hdr = '\n\t\t'.join(f'{k}: {v}' for k, v in response.headers.items())
+        try:
+            hdr = '\n\t\t'.join(f'{k}: {v}' for k, v in response.headers.items())
+        except AttributeError as ae:
+            logger.warning(ae)
+            hdr = None
+
         try:
             json = await response.json(content_type=None)
             json = pformat(json, sort_dicts=False)
@@ -289,10 +296,10 @@ class BaseClientApi:
             json = None
             text = await response.text()
 
-        # todo: convert to a model
+        # todo: convert to a template
         return f'\n[bold yellow]HTTP[/bold yellow]/{response.version.major}.{response.version.minor}, {response.method}-' \
                f'{response.status}[{response.reason}]' \
-               f'\n\t[bold yellow]Request-URL:[/bold yellow] \n\t\t{response.url}\n' \
+               f'\n\t[bold yellow]Request-URL:[/bold yellow] \n\t\t{unquote_plus(f"{response.url}")}\n' \
                f'\n\t[bold yellow]Header:[/bold yellow] \n\t\t{hdr}\n' \
                f'\n\t[bold yellow]Response-JSON:[/bold yellow] \n{json}\n' \
                f'\n\t[bold yellow]Response-TEXT:[/bold yellow] \n\t\t{text}\n'
@@ -321,28 +328,40 @@ class BaseClientApi:
             status = result['response'].status
 
             try:
+                # todo: switch to pattern matching/case statement in python 3.10
                 if result['response'].headers['Content-Type'].startswith('application/jwt'):
                     response = {'token': await result['response'].text(encoding='utf-8'), 'token_type': 'Bearer'}
+
                 elif result['response'].headers['Content-Type'].startswith('application/json'):
                     response = await result['response'].json(encoding='utf-8', loads=rapidjson.loads)
+
                 elif result['response'].headers['Content-Type'].startswith('application/javascript'):
                     response = await result['response'].json(encoding='utf-8', loads=rapidjson.loads,
                                                              content_type='application/javascript')
+
                 elif result['response'].headers['Content-Type'].startswith('text/javascript'):
                     response = await result['response'].json(encoding='utf-8', loads=rapidjson.loads,
                                                              content_type='text/javascript')
+
                 elif result['response'].headers['Content-Type'].startswith('text/plain'):
                     response = {'text_plain': await result['response'].text(encoding='utf-8')}
+
                 elif result['response'].headers['Content-Type'].startswith('text/html'):
                     response = {'text_html': await result['response'].text(encoding='utf-8')}
+
+                elif result['response'].headers['Content-Type'].startswith('application/problem+json'):
+                    response = await result['response'].json(encoding='utf-8', loads=rapidjson.loads)
+                    logger.error(await self.request_debug(response))
+
                 else:
-                    logger.error(f'Content-Type: {result["response"].headers["Content-Type"]}, not currently handled.')
-                    raise NotImplementedError
-            except KeyError as ke:  # fixme: (improve this note) This shouldn't happen too often.
+                    logger.error(f'Content-Type: {result["response"].headers["Content-Type"]} is not currently handled.')
+                    response = await result['response'].text(encoding='utf-8')
+
+            except KeyError as ke:  # No Content-Type returned
                 logger.warning(ke)
                 response = await result['response'].text(encoding='utf-8')
 
-            # This is for when the 'Content-Type' is specified as JSON but is actually returned as a string by the API.
+            # This is for when the 'Content-Type' is specified as non-text but is actually returned as a string by the API.
             if type(response) == str:
                 response = {'text_plain': await result['response'].text(encoding='utf-8')}
 
@@ -412,8 +431,6 @@ class BaseClientApi:
 
         Returns:
             (dict)"""
-        request_id = uuid4().hex
-
         try:
             base = self.cfg['URI']['Base']
         except TypeError:
@@ -434,7 +451,7 @@ class BaseClientApi:
 
             elif model.method == 'POST':
                 response = await self.session.post(auth=self.auth,
-                                                   data=model.form_data,
+                                                   # data=model.form_data(),
                                                    headers=model.headers,
                                                    json=model.json_body,
                                                    params=model.parameters,
@@ -445,7 +462,7 @@ class BaseClientApi:
 
             elif model.method == 'PUT':
                 response = await self.session.put(auth=self.auth,
-                                                  data=model.form_data,
+                                                  # data=model.form_data(),
                                                   headers=model.headers,
                                                   json=model.json_body,
                                                   params=model.parameters,
@@ -456,7 +473,7 @@ class BaseClientApi:
 
             elif model.method == 'DELETE':
                 response = await self.session.delete(auth=self.auth,
-                                                     data=model.form_data,
+                                                     # data=model.form_data(),
                                                      headers=model.headers,
                                                      json=model.json_body,
                                                      params=model.parameters,
@@ -476,7 +493,7 @@ class BaseClientApi:
 
             elif model.method == 'PATCH':
                 response = await self.session.patch(auth=self.auth,
-                                                    data=model.form_data,
+                                                    # data=model.form_data,
                                                     headers=model.headers,
                                                     json=model.json_body,
                                                     params=model.parameters,
@@ -485,7 +502,14 @@ class BaseClientApi:
                                                     ssl=self.ssl,
                                                     url=f'{base}{model.endpoint}')
 
+            # todo: change to template
             if self.debug or debug:
+                print(f'auth: {self.auth}')
+                print(f'headers: {model.headers}')
+                print(f'json: {model.json_body}')
+                print(f'params: {model.parameters}')
+                print(f'proxy: {self.proxy}')
+                print(f'proxy_auth: {self.proxy_auth}')
                 print(await self.request_debug(response))
 
             try:
