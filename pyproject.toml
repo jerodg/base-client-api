@@ -4,27 +4,26 @@ version = "2.0.0"
 description = "Base Client API; Used to build other client APIs"
 authors = ["Jerod Gawne <jerodgawne@gmail.com>"]
 
-
 [tool.poetry.dependencies]
-aiodns = "^2.0"
-aiofiles = "^0.6"
-aiohttp = "^3.7"
-brotlipy = "^0.7"
-cchardet = "^2.1"
-loguru = "^0.5"
-pydantic = "^1.8"
+aiodns = "^2.0.0"
+aiofiles = "^0.6.0"
+aiohttp = "^3.7.4"
+brotlipy = "^0.7.0"
+cchardet = "^2.1.7"
+loguru = "^0.5.3"
+pydantic = "^1.8.1"
 python = "^3.9"
 python-rapidjson = "^1.0"
-rich = "^9.13"
-tenacity = "^7.0"
-toml = "^0.10"
+rich = "^9.13.0"
+tenacity = "^7.0.0"
+toml = "^0.10.2"
 
 [tool.poetry.dev-dependencies]
-pytest-asyncio = "^0.14"
-pytest-cov = "^2.11"
-pytest-runner = "^5.3"
-pytest = "^6.2"
-twine = "^3.3"  # Needed as poetry publish seems to be broken
+pytest = "^6.2.2"
+pytest-asyncio = "^0.14.0"
+pytest-cov = "^2.11.1"
+pytest-runner = "^5.3.0"
+twine = "^3.4.1"  # Needed as poetry publish seems to be broken
 
 [build-system]
 requires = ["poetry-core>=1.0"]

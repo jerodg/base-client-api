@@ -17,7 +17,7 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-from typing import Any, List
+from typing import Any, List, NoReturn
 
 from pydantic import Field
 from pydantic.dataclasses import dataclass
@@ -32,14 +32,26 @@ class Results:
 
     @property
     def dict(self) -> dict:
+        """Dict
+
+        Provides a dictionary with success/failure results
+
+        Returns:
+            (dict)"""
         return {'success': self.success, 'failure': self.failure}
 
-    def cleanup(self, sort_order: str = 'asc', keep_request_id: bool = False):
+    def cleanup(self, sort_order: str = 'asc') -> NoReturn:
+        """Cleanup
+
+        Removes keys that have a null value and optionally sorts
+
+        Args:
+            sort_order ():
+
+        Returns:
+            (NoReturn)"""
         success = []
         for rec in self.success:
-            if not keep_request_id:
-                del rec['request_id']
-
             d = {k: v for k, v in rec.items() if v is not None}
             d = dict(sorted(d.items(), reverse=True if sort_order.lower() == 'desc' else False))
             success.append(d)

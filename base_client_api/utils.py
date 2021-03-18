@@ -225,5 +225,28 @@ async def file_streamer(file_path: str) -> bytes:
             yield chunk
 
 
+def pascal_case(value) -> str:
+    """Convert Case
+
+    Converts snake case to pascal case for JSON
+
+    Args:
+        value (str):
+
+    References:
+        https://stackoverflow.com/questions/17326185/what-are-the-different-kinds-of-cases
+
+    Raises:
+        ValueError
+
+    Returns:
+        (str)"""
+    words = value.split('_')
+    new_words = [words[0]]
+    [new_words.append(x.capitalize()) for x in words[1:]]
+
+    return ''.join(new_words)
+
+
 if __name__ == '__main__':
     print(__doc__)

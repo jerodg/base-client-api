@@ -22,7 +22,7 @@ import time
 import pytest
 from rich import print
 
-from base_client_api.models.pydantic_cfg import pascal_case
+from base_client_api.models.base import pascal_case
 from base_client_api.utils import bprint
 
 

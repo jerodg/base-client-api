@@ -24,32 +24,26 @@ from logging import DEBUG, WARNING
 from os import getenv
 from pprint import pformat
 from ssl import create_default_context, Purpose, SSLContext
-from typing import Optional, Union
+from typing import List, Optional, Union
 from urllib.parse import unquote_plus
 
 import aiohttp as aio
 import rapidjson
 import toml
 from loguru import logger
-from pydantic.dataclasses import dataclass
 from rich import print
 from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
-from base_client_api.exceptions import InvalidOptionError
 from base_client_api.models.record import Record
 from base_client_api.models.results import Results
 
-METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
-
 
 # todo: handle form data
-# todo: add ability to use plugins in-lieu of child classes
-# todo: investigate specifying response schema (view) in Record() to replace response_key property
 
 
 class BaseClientApi:
     """Base Client API"""
-    HDR: dict = {'Content-Type': 'application/json; charset=utf-8'}
+    HDR: dict = {'Content-Type': 'application/json; charset=utf-8', 'Accept': 'application/json'}
     SEM: int = 5  # This defines the number of parallel requests to make.
 
     def __init__(self, cfg: Optional[Union[str, dict]] = None):
@@ -298,6 +292,8 @@ class BaseClientApi:
             text = await response.text()
         except AttributeError as ae:
             logger.warning(ae)
+            json = None
+            text = None
             print('response_error:', response)
 
         # todo: convert to a template
@@ -309,7 +305,7 @@ class BaseClientApi:
                f'\n\t[bold yellow]Response-TEXT:[/bold yellow] \n\t\t{text}\n'
 
     async def process_results(self, results: Results,
-                              response_key: Optional[str] = None,
+                              model: Record,
                               cleanup: bool = False,
                               sort_field: Optional[str] = None,
                               sort_order: Optional[str] = None) -> Results:
@@ -319,8 +315,8 @@ class BaseClientApi:
         results (List[Union[dct, aio.ClientResponse]]):
         success (List[dct]):
         failure (List[dct]):
-        response_key (Optional[str]):
-        cleanup (Optional[bool]): Default: True
+        model   (Record):
+        cleanup (Optional[bool]):
             Removes raw results, Removes empty (None) keys, and Sorts Keys of each record.
         sort_field (Optional[str]): Top incident_level dictionary key to sort on
         sort_order (Optional[str]): Direction to sort ASC | DESC (any case)
@@ -329,49 +325,49 @@ class BaseClientApi:
         Returns:
             results (Results): """
         for result in results.responses:
-            status = result['response'].status
+            status = result.status
 
             try:
                 # todo: switch to pattern matching/case statement in python 3.10
-                if result['response'].headers['Content-Type'].startswith('application/jwt'):
-                    response = {'token': await result['response'].text(encoding='utf-8'), 'token_type': 'Bearer'}
+                if result.headers['Content-Type'].startswith('application/jwt'):
+                    response = {'token': await result.text(encoding='utf-8'), 'token_type': 'Bearer'}
 
-                elif result['response'].headers['Content-Type'].startswith('application/json'):
-                    response = await result['response'].json(encoding='utf-8', loads=rapidjson.loads)
+                elif result.headers['Content-Type'].startswith('application/json'):
+                    response = await result.json(encoding='utf-8', loads=rapidjson.loads)
 
-                elif result['response'].headers['Content-Type'].startswith('application/javascript'):
-                    response = await result['response'].json(encoding='utf-8', loads=rapidjson.loads,
-                                                             content_type='application/javascript')
+                elif result.headers['Content-Type'].startswith('application/javascript'):
+                    response = await result.json(encoding='utf-8', loads=rapidjson.loads,
+                                                 content_type='application/javascript')
 
-                elif result['response'].headers['Content-Type'].startswith('text/javascript'):
-                    response = await result['response'].json(encoding='utf-8', loads=rapidjson.loads,
-                                                             content_type='text/javascript')
+                elif result.headers['Content-Type'].startswith('text/javascript'):
+                    response = await result.json(encoding='utf-8', loads=rapidjson.loads,
+                                                 content_type='text/javascript')
 
-                elif result['response'].headers['Content-Type'].startswith('text/plain'):
-                    response = {'text_plain': await result['response'].text(encoding='utf-8')}
+                elif result.headers['Content-Type'].startswith('text/plain'):
+                    response = {'text_plain': await result.text(encoding='utf-8')}
 
-                elif result['response'].headers['Content-Type'].startswith('text/html'):
-                    response = {'text_html': await result['response'].text(encoding='utf-8')}
+                elif result.headers['Content-Type'].startswith('text/html'):
+                    response = {'text_html': await result.text(encoding='utf-8')}
 
-                elif result['response'].headers['Content-Type'].startswith('application/problem+json'):
-                    response = await result['response'].json(encoding='utf-8', loads=rapidjson.loads)
+                elif result.headers['Content-Type'].startswith('application/problem+json'):
+                    response = await result.json(encoding='utf-8', loads=rapidjson.loads)
                     logger.error(await self.request_debug(response))
 
                 else:
-                    logger.error(f'Content-Type: {result["response"].headers["Content-Type"]} is not currently handled.')
-                    response = await result['response'].text(encoding='utf-8')
+                    logger.error(f'Content-Type: {result.headers["Content-Type"]} is not currently handled.')
+                    response = await result.text(encoding='utf-8')
 
             except KeyError as ke:  # No Content-Type returned
                 logger.warning(ke)
-                response = await result['response'].text(encoding='utf-8')
+                response = await result.text(encoding='utf-8')
 
             # This is for when the 'Content-Type' is specified as non-text but is actually returned as a string by the API.
             if type(response) == str and len(response):
-                response = {'text_plain': await result['response'].text(encoding='utf-8')}
+                response = {'text_plain': await result.text(encoding='utf-8')}
 
             if 200 <= status <= 299:
                 try:
-                    d = response[response_key]
+                    d = model.response_key
                     if type(d) is list:
                         data = [{**r} for r in d]
                     else:
@@ -414,14 +410,13 @@ class BaseClientApi:
            after=after_log(logger, DEBUG),
            stop=stop_after_attempt(5),
            before_sleep=before_sleep_log(logger, WARNING))
-    async def request(self, model: Record, debug: Optional[bool] = False) -> Optional[dict]:
+    async def request(self, model: Record, debug: Optional[bool] = False) -> aio.ClientResponse:
         """Multi-purpose aiohttp request function
         Args:
             model (dataclass): Optionally defined:
                                - file (Optional[str]): A valid file-path
                                - method (str): A valid HTTP Verb in [GET, POST]
                                - end_point (str): REST Endpoint; e.g. /devices/query
-                               - request_id (str): Unique Identifier used to associate request with response
                                - data (Optional[dct]):
                                - json (Optional[dct]):
                                - params (Optional[Union[List[tuple], dct, MultiDict]]):
@@ -437,80 +432,21 @@ class BaseClientApi:
         Returns:
             (Optional[dict])"""
         try:
-            assert model.method in METHODS
-        except AssertionError:
-            raise InvalidOptionError(model.method, METHODS)
-
-        try:
             base = self.cfg['URI']['Base']
         except TypeError:
             base = ''
 
         async with self.sem:
-            if model.method == 'GET':
-                response = await self.session.get(auth=self.auth,
+            response = await self.session.request(auth=self.auth,
+                                                  # data=model.form_data,  # todo: implement this
                                                   headers=model.headers or self.HDR,
-                                                  url=f'{base}{model.endpoint}',
-                                                  params=model.parameters,
-                                                  proxy=self.proxy,
-                                                  proxy_auth=self.proxy_auth,
-                                                  ssl=self.ssl)
-
-            elif model.method == 'HEAD':  # todo:
-                raise NotImplementedError
-
-            elif model.method == 'POST':
-                response = await self.session.post(auth=self.auth,
-                                                   # data=model.form_data(),
-                                                   headers=model.headers,
-                                                   json=model.json_body,
-                                                   params=model.parameters,
-                                                   proxy=self.proxy,
-                                                   proxy_auth=self.proxy_auth,
-                                                   ssl=self.ssl,
-                                                   url=f'{base}{model.endpoint}')
-
-            elif model.method == 'PUT':
-                response = await self.session.put(auth=self.auth,
-                                                  # data=model.form_data(),
-                                                  headers=model.headers,
                                                   json=model.json_body,
+                                                  method=model.method,
                                                   params=model.parameters,
                                                   proxy=self.proxy,
                                                   proxy_auth=self.proxy_auth,
                                                   ssl=self.ssl,
                                                   url=f'{base}{model.endpoint}')
-
-            elif model.method == 'DELETE':
-                response = await self.session.delete(auth=self.auth,
-                                                     # data=model.form_data(),
-                                                     headers=model.headers,
-                                                     json=model.json_body,
-                                                     params=model.parameters,
-                                                     proxy=self.proxy,
-                                                     proxy_auth=self.proxy_auth,
-                                                     ssl=self.ssl,
-                                                     url=f'{base}{model.endpoint}')
-
-            elif model.method == 'CONNECT':  # todo:
-                raise NotImplementedError
-
-            elif model.method == 'OPTIONS':  # todo:
-                raise NotImplementedError
-
-            elif model.method == 'TRACE':  # todo:
-                raise NotImplementedError
-
-            elif model.method == 'PATCH':
-                response = await self.session.patch(auth=self.auth,
-                                                    # data=model.form_data,  # todo: implement this
-                                                    headers=model.headers,
-                                                    json=model.json_body,
-                                                    params=model.parameters,
-                                                    proxy=self.proxy,
-                                                    proxy_auth=self.proxy_auth,
-                                                    ssl=self.ssl,
-                                                    url=f'{base}{model.endpoint}')
 
             # todo: change to template
             if self.debug or debug:
@@ -528,17 +464,16 @@ class BaseClientApi:
                 logger.error(self.request_debug(response))
                 raise aio.ClientError
 
-            # todo: change to plain response
-            return {'response': response}
+            return response
 
-    async def make_request(self, models: dataclass, debug: bool = False) -> Results:
+    async def make_request(self, models: List[Record], debug: Optional[bool] = False) -> Results:
         """Make Request
 
         This is a convenience method to make calling easier.
         It can be overridden to provide additional functionality.
 
         Args:
-            models (dataclass): If sending a list of models they must be all of the same type
+            models (List[Record]): If sending a list of models they must be all of the same type
             debug (bool):
 
         Returns:
@@ -547,8 +482,7 @@ class BaseClientApi:
             models = [models]
 
         results = await asyncio.gather(*[asyncio.create_task(self.request(m, debug=debug)) for m in models])
-
-        return await self.process_results(results=Results(responses=results), response_key=models[0].response_key)
+        return await self.process_results(results=Results(responses=results), model=models[0].__class__)
 
 
 if __name__ == '__main__':

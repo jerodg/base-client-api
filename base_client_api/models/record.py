@@ -19,14 +19,14 @@ You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 from typing import Any, Callable, Optional
 
-from base_client_api.models.pydantic_cfg import BaseModel
+from base_client_api.models.base import Base
 
 METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
 
 
-class Record(BaseModel):
+class Record(Base):
     """Generic Record"""
-    body: Optional[BaseModel]
+    body: Optional[Base]
 
     def dict(self, *,
              include: set = None,

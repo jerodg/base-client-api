@@ -29,26 +29,6 @@ class BooksListAll(Record):
     offset: Optional[int]
 
     @property
-    def endpoint(self) -> str:
-        """Endpoint
-
-        The suffix end of the URI
-
-        Returns:
-            (str)"""
-        return '/'
-
-    @property
-    def response_key(self) -> Optional[str]:
-        """Data Key
-
-        This is the key used in the return dict that holds the primary responses
-
-        Returns:
-            (str)"""
-        return None
-
-    @property
     def method(self) -> str:
         """Method
 

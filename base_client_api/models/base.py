@@ -20,33 +20,14 @@ If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 from pydantic import BaseModel as PydanticBaseModel
 from rapidjson import dumps, loads
 
-CASE_TYPES = ['flat', 'flat_upper', 'camel', 'pascal', 'snake', 'snake_pascal', 'snake_camel', 'kebab', 'train', 'underscore_camel']
+from base_client_api.utils import pascal_case
 
 
-def pascal_case(value) -> str:
-    """Convert Case
+class Base(PydanticBaseModel):
+    """Base Model
 
-    Converts snake case to pascal case for JSON
+    Used for pydantic configuration"""
 
-    Args:
-        value (str):
-
-    References:
-        https://stackoverflow.com/questions/17326185/what-are-the-different-kinds-of-cases
-
-    Raises:
-        ValueError
-
-    Returns:
-        (str)"""
-    words = value.split('_')
-    new_words = [words[0]]
-    [new_words.append(x.capitalize()) for x in words[1:]]
-
-    return ''.join(new_words)
-
-
-class BaseModel(PydanticBaseModel):
     class Config:
         """MyConfig
 
