@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.9
+#!/usr/bin/env python3.8
 """Base Client API -> Models -> Pydantic Config
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "base-client-api"
-version = "2.0.0"
+version = "2.1.0"
 description = "Base Client API; Used to build other client APIs"
 authors = ["Jerod Gawne <jerodgawne@gmail.com>"]
 
@@ -12,7 +12,7 @@ brotlipy = "^0.7.0"
 cchardet = "^2.1.7"
 loguru = "^0.5.3"
 pydantic = "^1.8.1"
-python = "^3.9"
+python = "^3.8"  # Recommended 3.9+
 python-rapidjson = "^1.0"
 rich = "^9.13.0"
 tenacity = "^7.0.0"

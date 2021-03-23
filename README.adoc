@@ -38,6 +38,7 @@ Doesn't do much by itself; Requires plugins.
 
 == Roadmap
 
+. Script to handle conversion of .adoc to .md
 . Handle Multipart Form
 . Handle Form URL Encoded
 . Handle XML Responses (maybe)

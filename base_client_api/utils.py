@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.9
+#!/usr/bin/env python3.8
 """Base Client API -> Utils
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
@@ -18,14 +18,13 @@ copies or substantial portions of the Software.
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 import inspect
-from os.path import realpath
-from random import choice, shuffle
-from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
-from typing import Any, Generator, List, NoReturn, Optional, Sized, Union
-
 from aiofiles import open
 from loguru import logger
+from os.path import realpath
+from random import choice, shuffle
 from rich import print
+from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
+from typing import Any, Generator, List, NoReturn, Optional, Sized, Union
 
 from base_client_api.models.results import Results
 

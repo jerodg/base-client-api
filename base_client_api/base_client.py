@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.9
+#!/usr/bin/env python3.8
 """Base Client API -> Base Client
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
@@ -17,28 +17,29 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
+import aiohttp as aio
 import asyncio
+import rapidjson
+import toml
 from asyncio import Semaphore
 from json.decoder import JSONDecodeError
 from logging import DEBUG, WARNING
+from loguru import logger
 from os import getenv
 from pprint import pformat
+from rich import print
 from ssl import create_default_context, Purpose, SSLContext
+from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 from typing import List, Optional, Union
 from urllib.parse import unquote_plus
-
-import aiohttp as aio
-import rapidjson
-import toml
-from loguru import logger
-from rich import print
-from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
 from base_client_api.models.record import Record
 from base_client_api.models.results import Results
 
 
 # todo: handle form data
+# todo: add AWS secrets manager to config load
+# todo: cleanup/refactor config load
 
 
 class BaseClientApi:
