@@ -17,21 +17,22 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-import aiohttp as aio
 import asyncio
-import rapidjson
-import toml
 from asyncio import Semaphore
 from json.decoder import JSONDecodeError
 from logging import DEBUG, WARNING
-from loguru import logger
 from os import getenv
 from pprint import pformat
-from rich import print
 from ssl import create_default_context, Purpose, SSLContext
-from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 from typing import List, Optional, Union
 from urllib.parse import unquote_plus
+
+import aiohttp as aio
+import rapidjson
+import toml
+from loguru import logger
+from rich import print
+from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
 from base_client_api.models.record import Record
 from base_client_api.models.results import Results
@@ -40,6 +41,7 @@ from base_client_api.models.results import Results
 # todo: handle form data
 # todo: add AWS secrets manager to config load
 # todo: cleanup/refactor config load
+# todo: switch to pydantic settings loader?
 
 
 class BaseClientApi:
@@ -49,12 +51,12 @@ class BaseClientApi:
 
     def __init__(self, cfg: Optional[Union[str, dict]] = None):
         self.debug: bool = False
-        self.auth: Union[aio.BasicAuth, None] = None
-        self.proxy: Union[str, None] = None
-        self.proxy_auth: Union[aio.BasicAuth, None] = None
-        self.sem: Union[Semaphore, None] = None
-        self.session: Union[aio.ClientSession, None] = None
-        self.ssl: Union[SSLContext, None] = None
+        self.auth: Optional[aio.BasicAuth] = None
+        self.proxy: Optional[str] = None
+        self.proxy_auth: Optional[aio.BasicAuth] = None
+        self.sem: Optional[Semaphore] = None
+        self.session: Optional[aio.ClientSession] = None
+        self.ssl: Optional[SSLContext] = None
 
         self.cfg = self.__load_config_data(cfg)
         self.process_config(self.cfg)
@@ -233,7 +235,6 @@ class BaseClientApi:
         except (KeyError, TypeError):
             cookies = None
 
-        # Cookie Jar
         try:
             cookie_jar_unsafe = cfg['Options']['CookieJar_Unsafe']
         except (KeyError, TypeError):

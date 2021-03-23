@@ -32,6 +32,9 @@ class Base(PydanticBaseModel):
         """MyConfig
 
         Pydantic configuration"""
+        allow_population_by_field_name = True
         alias_generator = pascal_case
-        json_loads = loads
+        anystr_strip_whitespace = True
+        case_sensitive = True
         json_dumps = dumps
+        json_loads = loads

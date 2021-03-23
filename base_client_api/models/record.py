@@ -21,8 +21,6 @@ from typing import Any, Callable, Optional
 
 from base_client_api.models.base import Base
 
-METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']
-
 
 class Record(Base):
     """Generic Record"""
@@ -149,6 +147,7 @@ class Record(Base):
 
         return self.dict()
 
+    # todo: implement
     # @staticmethod
     # def form_data(file: Optional[str]) -> Optional[dict]:
     #     """Request Body

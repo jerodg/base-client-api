@@ -18,18 +18,19 @@ copies or substantial portions of the Software.
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
 import inspect
-from aiofiles import open
-from loguru import logger
 from os.path import realpath
 from random import choice, shuffle
-from rich import print
 from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 from typing import Any, Generator, List, NoReturn, Optional, Sized, Union
+
+from aiofiles import open
+from devtools import debug
+from loguru import logger
+from rich import inspect, print
 
 from base_client_api.models.results import Results
 
 
-@logger.catch
 def bprint(message: str, location: str = None) -> NoReturn:
     """Build a banner
 
@@ -64,7 +65,6 @@ def bprint(message: str, location: str = None) -> NoReturn:
     return
 
 
-@logger.catch
 def flatten(itr: Union[tuple, list]) -> Generator:
     """Reduce embedded lists/tuples into a single list (generator)
 
@@ -80,7 +80,6 @@ def flatten(itr: Union[tuple, list]) -> Generator:
             yield item
 
 
-@logger.catch
 def generate_password(min_len=15, max_length=24) -> str:
     """Generate a Password
 
@@ -108,8 +107,7 @@ def generate_password(min_len=15, max_length=24) -> str:
     return pwd
 
 
-@logger.catch
-def tprint(results: Results, requests: Optional[Any] = None, top: Optional[Union[int, None]] = None) -> NoReturn:
+def tprint(results: Results, requests: Optional[Any] = None, top: Optional[int] = None) -> NoReturn:
     """Test Print
 
     Args:
@@ -125,29 +123,31 @@ def tprint(results: Results, requests: Optional[Any] = None, top: Optional[Union
     print(f'\n{top_hdr if len(results.success) > 1 else ""}[bold green]Success Result{"s" if len(results.success) > 1 else ""}'
           f'[/bold green] of {len(results.success)} Returned:')
     if top:
-        print(*results.success[:top], sep='\n')
+        debug(results.success[:top])
     else:
-        print(*results.success, sep='\n')
+        debug(results.success)
 
     print(f'\n{top_hdr if len(results.failure) > 1 else ""}[bold red]Failure Result{"s" if len(results.failure) > 1 else ""}'
           f'[/bold red] of {len(results.failure)} Returned:')
+
     if top:
-        print(*results.failure[:top], sep='\n')
+        debug(results.failure[:top])
     else:
-        print(*results.failure, sep='\n')
+        debug(results.failure)
 
     if requests:
         print(f'\n{top_hdr}Requests Result{"s" if len(results.success) > 1 else ""}: {len(requests)}')
+
         if top:
-            print(*requests[:top], sep='\n')
+            debug(requests[:top])
         else:
-            print(*requests, sep='\n')
+            debug(requests)
 
     return
 
 
-@logger.catch
-def vprint(var: Sized, str_output: bool = True) -> Union[str, NoReturn]:
+# todo: This needs testing (errors) when trying classes
+def vprint(var: Sized, str_output: bool = True) -> Optional[str]:
     """Variable Printer
        - Prints the name of the variable, length, and value.
        -- [<variable_name>] (<variable_length>): <variable_content>
@@ -190,7 +190,6 @@ def vprint(var: Sized, str_output: bool = True) -> Union[str, NoReturn]:
             logger.error('var_val is not var')
 
 
-@logger.catch
 def sort_dict(dct: dict, reverse: Optional[bool] = False) -> dict:
     """Sort a dictionary, recursively, by keys.
 

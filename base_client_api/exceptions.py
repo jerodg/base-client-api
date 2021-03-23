@@ -17,13 +17,13 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
-from loguru import logger
 from typing import Sized
+
+from loguru import logger
 
 from base_client_api.utils import vprint
 
 
-@logger.catch
 class InvalidOptionError(Exception):
     """Invalid Option Error
        - For when a field can only be one of available options."""
