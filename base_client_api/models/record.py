@@ -29,7 +29,7 @@ class Record(Base):
     def dict(self, *,
              include: set = None,
              exclude: set = None,
-             by_alias: bool = True,
+             by_alias: bool = False,
              skip_defaults: bool = None,
              exclude_unset: bool = False,
              exclude_defaults: bool = False,

@@ -24,11 +24,10 @@ from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 from typing import Any, Generator, List, NoReturn, Optional, Sized, Union
 
 from aiofiles import open
+from base_client_api.models.results import Results
 from devtools import debug
 from loguru import logger
 from rich import inspect, print
-
-from base_client_api.models.results import Results
 
 
 def bprint(message: str, location: str = None) -> NoReturn:
@@ -120,8 +119,9 @@ def tprint(results: Results, requests: Optional[Any] = None, top: Optional[int] 
     # todo: if no text response received, return response status in response.failure instead of ''
     top_hdr = f'Top {top} ' if top else '1'
 
-    print(f'\n{top_hdr if len(results.success) > 1 else ""}[bold green]Success Result{"s" if len(results.success) > 1 else ""}'
-          f'[/bold green] of {len(results.success)} Returned:')
+    print(
+        f'\n{top_hdr if len(results.success) > 1 else ""}[bold green]Success Result{"s" if len(results.success) > 1 else ""}['
+        f'/bold green] of {len(results.success)} Returned:')
     if top:
         debug(results.success[:top])
     else:

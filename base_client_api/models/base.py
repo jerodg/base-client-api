@@ -17,10 +17,9 @@ copies or substantial portions of the Software.
 
 You should have received a copy of the SSPL along with this program.
 If not, see <https://www.mongodb.com/licensing/server-side-public-license>."""
+from base_client_api.utils import pascal_case
 from pydantic import BaseModel as PydanticBaseModel
 from rapidjson import dumps, loads
-
-from base_client_api.utils import pascal_case
 
 
 class Base(PydanticBaseModel):
@@ -29,7 +28,7 @@ class Base(PydanticBaseModel):
     Used for pydantic configuration"""
 
     class Config:
-        """MyConfig
+        """Config
 
         Pydantic configuration"""
         allow_population_by_field_name = True
