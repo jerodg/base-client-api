@@ -49,7 +49,7 @@ class BaseClientApi:
     HDR: dict = {'Content-Type': 'application/json; charset=utf-8', 'Accept': 'application/json'}
     SEM: int = 5  # This defines the number of parallel requests to make.
 
-    def __init__(self, cfg: Optional[Union[str, dict]] = None):
+    def __init__(self, cfg: Optional[Union[str, dict, List[Union[str, dict]]]] = None):
         self.debug: bool = False
         self.auth: Optional[aio.BasicAuth] = None
         self.proxy: Optional[str] = None
@@ -69,7 +69,7 @@ class BaseClientApi:
         await self.session.close()
 
     @staticmethod
-    def __load_config_data(cfg_data: Union[str, dict]) -> dict:
+    def __load_config_data(cfg_data: Union[str, dict, List[Union[str, dict]]]) -> dict:
         """Load Configuration Data
 
         Args:
@@ -80,59 +80,63 @@ class BaseClientApi:
 
         Returns:
             cfg (dict)"""
-        if type(cfg_data) is dict:
-            cfg = cfg_data
-        elif type(cfg_data) is str:
-            if cfg_data.endswith('.toml'):
-                cfg = toml.load(cfg_data)
-            elif cfg_data.endswith('.json'):
-                cfg = rapidjson.loads(open(cfg_data).read(), ensure_ascii=False)
+        if type(cfg_data) is not list:
+            cfg_data = [cfg_data]
+
+        for c in cfg_data:
+            if type(c) is dict:
+                cfg = c
+            if type(c) is str:
+                if c.endswith('.toml'):
+                    cfg = toml.load(c)
+                elif c.endswith('.json'):
+                    cfg = rapidjson.loads(open(cfg_data).read(), ensure_ascii=False)
+                else:
+                    logger.error(f'Unknown configuration file type: {c.split(".")[1]}\n-> Valid Types: .toml | .json')
+                    raise NotImplementedError
             else:
-                logger.error(f'Unknown configuration file type: {cfg_data.split(".")[1]}\n-> Valid Types: .toml | .json')
-                raise NotImplementedError
-        else:
-            cfg = None
+                cfg = None
 
-        if env_auth_user := getenv('Auth_Username'):
-            cfg['Auth']['Username'] = env_auth_user
+            if env_auth_user := getenv('Auth_Username'):
+                cfg['Auth']['Username'] = env_auth_user
 
-        if env_auth_pass := getenv('Auth_Password'):
-            cfg['Auth']['Password'] = env_auth_pass
+            if env_auth_pass := getenv('Auth_Password'):
+                cfg['Auth']['Password'] = env_auth_pass
 
-        if env_auth_header := getenv('Auth_Header'):
-            cfg['Auth']['Header'] = env_auth_header
+            if env_auth_header := getenv('Auth_Header'):
+                cfg['Auth']['Header'] = env_auth_header
 
-        if env_auth_token := getenv('Auth_Token'):
-            cfg['Auth']['Token'] = env_auth_token
+            if env_auth_token := getenv('Auth_Token'):
+                cfg['Auth']['Token'] = env_auth_token
 
-        if env_uri_base := getenv('URI_Base'):
-            cfg['URI']['Base'] = env_uri_base
+            if env_uri_base := getenv('URI_Base'):
+                cfg['URI']['Base'] = env_uri_base
 
-        if env_opt_ca := getenv('Options_CAPath'):
-            cfg['Options']['CAPath'] = env_opt_ca
+            if env_opt_ca := getenv('Options_CAPath'):
+                cfg['Options']['CAPath'] = env_opt_ca
 
-        if env_opt_ssl := getenv('Options_VerifySSL'):
-            cfg['Options']['VerifySS:'] = env_opt_ssl
+            if env_opt_ssl := getenv('Options_VerifySSL'):
+                cfg['Options']['VerifySS:'] = env_opt_ssl
 
-        if env_opt_dbg := getenv('Options_Debug'):
-            cfg['Options']['Ddebug'] = env_opt_dbg
+            if env_opt_dbg := getenv('Options_Debug'):
+                cfg['Options']['Ddebug'] = env_opt_dbg
 
-        if env_opt_sem := getenv('Options_SEM'):
-            cfg['Options']['SEM'] = env_opt_sem
+            if env_opt_sem := getenv('Options_SEM'):
+                cfg['Options']['SEM'] = env_opt_sem
 
-        if env_prxy_uri := getenv('Proxy_URI'):
-            cfg['Proxy']['URI'] = env_prxy_uri
+            if env_prxy_uri := getenv('Proxy_URI'):
+                cfg['Proxy']['URI'] = env_prxy_uri
 
-        if env_prxy_port := getenv('Proxy_Port'):
-            cfg['Proxy']['Port'] = env_prxy_port
+            if env_prxy_port := getenv('Proxy_Port'):
+                cfg['Proxy']['Port'] = env_prxy_port
 
-        if env_prxy_user := getenv('Proxy_Username'):
-            cfg['Proxy']['Username'] = env_prxy_user
+            if env_prxy_user := getenv('Proxy_Username'):
+                cfg['Proxy']['Username'] = env_prxy_user
 
-        if env_prxy_pass := getenv('Proxy_Password'):
-            cfg['Proxy']['Password'] = env_prxy_pass
+            if env_prxy_pass := getenv('Proxy_Password'):
+                cfg['Proxy']['Password'] = env_prxy_pass
 
-        return cfg
+            return cfg
 
     def process_config(self, cfg_data: dict) -> bool:
         """Process Configuration

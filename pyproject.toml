@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "base-client-api"
-version = "2.2.0"
+version = "2.2.1"
 description = "Base Client API; Used to build other client APIs"
 authors = ["Jerod Gawne <jerodgawne@gmail.com>"]
 
