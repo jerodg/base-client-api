@@ -24,7 +24,7 @@ from logging import DEBUG, WARNING
 from os import getenv
 from pprint import pformat
 from ssl import create_default_context, Purpose, SSLContext
-from typing import List, Optional, Union
+from typing import List, NoReturn, Optional, Union
 from urllib.parse import unquote_plus
 
 import aiohttp as aio
@@ -49,7 +49,7 @@ class BaseClientApi:
     HDR: dict = {'Content-Type': 'application/json; charset=utf-8', 'Accept': 'application/json'}
     SEM: int = 5  # This defines the number of parallel requests to make.
 
-    def __init__(self, cfg: Optional[Union[str, dict, List[Union[str, dict]]]] = None):
+    def __init__(self, cfg: Union[str, dict, List[Union[str, dict]]] = None):
         self.debug: bool = False
         self.auth: Optional[aio.BasicAuth] = None
         self.proxy: Optional[str] = None
@@ -57,8 +57,9 @@ class BaseClientApi:
         self.sem: Optional[Semaphore] = None
         self.session: Optional[aio.ClientSession] = None
         self.ssl: Optional[SSLContext] = None
+        self.cfg: Optional[dict] = None
 
-        self.cfg = self.__load_config_data(cfg)
+        self.load_config_data(cfg)
         self.process_config(self.cfg)
         self.session_config(self.cfg)
 
@@ -68,8 +69,7 @@ class BaseClientApi:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.session.close()
 
-    @staticmethod
-    def __load_config_data(cfg_data: Union[str, dict, List[Union[str, dict]]]) -> dict:
+    def load_config_data(self, cfg_data: Union[str, dict, List[Union[str, dict]]]) -> NoReturn:
         """Load Configuration Data
 
         Args:
@@ -79,7 +79,7 @@ class BaseClientApi:
                 environment variables.
 
         Returns:
-            cfg (dict)"""
+            (NoReturn)"""
         if type(cfg_data) is not list:
             cfg_data = [cfg_data]
 
@@ -136,7 +136,9 @@ class BaseClientApi:
             if env_prxy_pass := getenv('Proxy_Password'):
                 cfg['Proxy']['Password'] = env_prxy_pass
 
-            return cfg
+            self.cfg = cfg
+
+            return
 
     def process_config(self, cfg_data: dict) -> bool:
         """Process Configuration
