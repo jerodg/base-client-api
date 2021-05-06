@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.9
+#!/usr/bin/env python3.8
 """Base Client API -> Models -> Record
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
@@ -96,7 +96,7 @@ class Record(Base):
 
         Returns:
             (str)"""
-        return ''
+        return '/'
 
     @property
     def response_key(self) -> Optional[str]:
@@ -120,14 +120,14 @@ class Record(Base):
         return None
 
     @property
-    def parameters(self) -> Optional[dict]:
+    def parameters(self) -> Optional[str]:
         """URL Parameters
 
         If you need to pass parameters in the URL
 
         Returns:
             (dict)"""
-        return self.dict(exclude={'body'})
+        return self.json(exclude={'body'})
 
     @property
     def headers(self) -> Optional[dict]:
@@ -137,12 +137,15 @@ class Record(Base):
 
         Returns:
             (dict)"""
-        return {}
+        return None
 
     @property
     def json_body(self) -> Optional[dict]:
         """Request Body"""
-        return self.json_body()
+        if self.body:
+            return self.body.dict()
+
+        return self.dict()
 
     # todo: implement
     # @staticmethod
