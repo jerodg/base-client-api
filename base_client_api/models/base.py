@@ -29,7 +29,7 @@ class Base(PydanticBaseModel):
     Used for pydantic configuration"""
 
     class Config:
-        """Config
+        """MyConfig
 
         Pydantic configuration"""
         allow_population_by_field_name = True
