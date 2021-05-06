@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python3.9
 """Base Client API -> Base Client
 Copyright © 2019-2021 Jerod Gawne <https://github.com/jerodg/>
 
@@ -30,6 +30,7 @@ from urllib.parse import unquote_plus
 import aiohttp as aio
 import rapidjson
 import toml
+from devtools import debug
 from loguru import logger
 from rich import print
 from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
@@ -49,7 +50,7 @@ class BaseClientApi:
     HDR: dict = {'Content-Type': 'application/json; charset=utf-8', 'Accept': 'application/json'}
     SEM: int = 5  # This defines the number of parallel requests to make.
 
-    def __init__(self, cfg: Union[str, dict, List[Union[str, dict]]] = None):
+    def __init__(self, cfg: Optional[Union[str, dict]] = None, env_prefix: Optional[str] = ''):
         self.debug: bool = False
         self.auth: Optional[aio.BasicAuth] = None
         self.proxy: Optional[str] = None
@@ -58,6 +59,7 @@ class BaseClientApi:
         self.session: Optional[aio.ClientSession] = None
         self.ssl: Optional[SSLContext] = None
         self.cfg: Optional[dict] = None
+        self.env_prefix: Optional[str] = env_prefix
 
         self.load_config_data(cfg)
         self.process_config(self.cfg)
@@ -86,54 +88,53 @@ class BaseClientApi:
         for c in cfg_data:
             if type(c) is dict:
                 cfg = c
-            if type(c) is str:
+                debug(c)
+            elif type(c) is str:
                 if c.endswith('.toml'):
                     cfg = toml.load(c)
                 elif c.endswith('.json'):
                     cfg = rapidjson.loads(open(cfg_data).read(), ensure_ascii=False)
-                else:
-                    logger.error(f'Unknown configuration file type: {c.split(".")[1]}\n-> Valid Types: .toml | .json')
-                    raise NotImplementedError
             else:
-                cfg = None
+                logger.error(f'Unknown configuration type: {c.split(".")[1]}\n-> Valid Types: .toml | .json | dict')
+                raise NotImplementedError
 
-            if env_auth_user := getenv('Auth_Username'):
+            if env_auth_user := getenv(f'{self.env_prefix}Auth_Username'):
                 cfg['Auth']['Username'] = env_auth_user
 
-            if env_auth_pass := getenv('Auth_Password'):
+            if env_auth_pass := getenv(f'{self.env_prefix}Auth_Password'):
                 cfg['Auth']['Password'] = env_auth_pass
 
-            if env_auth_header := getenv('Auth_Header'):
+            if env_auth_header := getenv(f'{self.env_prefix}Auth_Header'):
                 cfg['Auth']['Header'] = env_auth_header
 
-            if env_auth_token := getenv('Auth_Token'):
+            if env_auth_token := getenv(f'{self.env_prefix}Auth_Token'):
                 cfg['Auth']['Token'] = env_auth_token
 
-            if env_uri_base := getenv('URI_Base'):
+            if env_uri_base := getenv(f'{self.env_prefix}URI_Base'):
                 cfg['URI']['Base'] = env_uri_base
 
-            if env_opt_ca := getenv('Options_CAPath'):
+            if env_opt_ca := getenv(f'{self.env_prefix}Options_CAPath'):
                 cfg['Options']['CAPath'] = env_opt_ca
 
-            if env_opt_ssl := getenv('Options_VerifySSL'):
+            if env_opt_ssl := getenv(f'{self.env_prefix}Options_VerifySSL'):
                 cfg['Options']['VerifySS:'] = env_opt_ssl
 
-            if env_opt_dbg := getenv('Options_Debug'):
+            if env_opt_dbg := getenv(f'{self.env_prefix}Options_Debug'):
                 cfg['Options']['Ddebug'] = env_opt_dbg
 
-            if env_opt_sem := getenv('Options_SEM'):
+            if env_opt_sem := getenv(f'{self.env_prefix}Options_SEM'):
                 cfg['Options']['SEM'] = env_opt_sem
 
-            if env_prxy_uri := getenv('Proxy_URI'):
+            if env_prxy_uri := getenv(f'{self.env_prefix}Proxy_URI'):
                 cfg['Proxy']['URI'] = env_prxy_uri
 
-            if env_prxy_port := getenv('Proxy_Port'):
+            if env_prxy_port := getenv(f'{self.env_prefix}Proxy_Port'):
                 cfg['Proxy']['Port'] = env_prxy_port
 
-            if env_prxy_user := getenv('Proxy_Username'):
+            if env_prxy_user := getenv(f'{self.env_prefix}Proxy_Username'):
                 cfg['Proxy']['Username'] = env_prxy_user
 
-            if env_prxy_pass := getenv('Proxy_Password'):
+            if env_prxy_pass := getenv(f'{self.env_prefix}Proxy_Password'):
                 cfg['Proxy']['Password'] = env_prxy_pass
 
             self.cfg = cfg
@@ -158,8 +159,8 @@ class BaseClientApi:
             if usr := cfg_data['Auth']['Username']:
                 if pwd := cfg_data['Auth']['Password']:
                     self.auth = aio.BasicAuth(login=usr, password=pwd)
-        except (KeyError, TypeError):
-            pass  # If we don't have credentials we don't need to create this.
+        except (KeyError, TypeError) as e:
+            logger.warning(e)  # If we don't have credentials we don't need to create this.
 
         try:
             proxy_uri = cfg_data['Proxy']['URI']
@@ -302,7 +303,7 @@ class BaseClientApi:
             logger.warning(ae)
             json = None
             text = None
-            print('response_error:', response)
+            logger.debug(f'Response Error: {response}')
 
         # todo: convert to a template
         return f'\n[bold yellow]HTTP[/bold yellow]/{response.version.major}.{response.version.minor}, {response.method}-' \
@@ -333,8 +334,7 @@ class BaseClientApi:
         Returns:
             results (Results): """
         for result in results.responses:
-            status = result.status
-
+            debug(result)
             try:
                 # todo: switch to pattern matching/case statement in python 3.10
                 if result.headers['Content-Type'].startswith('application/jwt'):
@@ -359,21 +359,18 @@ class BaseClientApi:
 
                 elif result.headers['Content-Type'].startswith('application/problem+json'):
                     response = await result.json(encoding='utf-8', loads=rapidjson.loads)
-                    logger.error(await self.request_debug(response))
-
+                    # logger.error(await self.request_debug(response))
+                # This is for when the 'Content-Type' is specified as non-text but is actually returned as a string by the API.
+                elif type(result) == str and len(result):
+                    response = {'text_plain': await result.text(encoding='utf-8')}
                 else:
                     logger.error(f'Content-Type: {result.headers["Content-Type"]} is not currently handled.')
                     response = await result.text(encoding='utf-8')
-
             except KeyError as ke:  # No Content-Type returned
                 logger.warning(ke)
                 response = await result.text(encoding='utf-8')
 
-            # This is for when the 'Content-Type' is specified as non-text but is actually returned as a string by the API.
-            if type(response) == str and len(response):
-                response = {'text_plain': await result.text(encoding='utf-8')}
-
-            if 200 <= status <= 299:
+            if 200 <= result.status <= 299:
                 try:
                     d = model.response_key
                     if type(d) is list:
@@ -393,7 +390,7 @@ class BaseClientApi:
                 else:
                     results.success.append(data)
 
-            elif status > 299:
+            elif result.status > 299:
                 try:
                     results.failure.append({**response})
                 except TypeError:
@@ -411,6 +408,8 @@ class BaseClientApi:
         elif sort_order:
             results.success.sort(reverse=True if sort_order == 'desc' else False)
 
+        print('process_results:')
+        debug(results)
         return results
 
     @retry(retry=retry_if_exception_type(aio.ClientError),
@@ -418,7 +417,7 @@ class BaseClientApi:
            after=after_log(logger, DEBUG),
            stop=stop_after_attempt(5),
            before_sleep=before_sleep_log(logger, WARNING))
-    async def request(self, model: Record, debug: Optional[bool] = False) -> aio.ClientResponse:
+    async def request(self, model: Record) -> aio.ClientResponse:
         """Multi-purpose aiohttp request function
         Args:
             model (dataclass): Optionally defined:
@@ -428,7 +427,6 @@ class BaseClientApi:
                                - data (Optional[dct]):
                                - json (Optional[dct]):
                                - params (Optional[Union[List[tuple], dct, MultiDict]]):
-            debug (Optional[bool]):
 
         References:
             https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol#Request_methods
@@ -447,7 +445,7 @@ class BaseClientApi:
         async with self.sem:
             response = await self.session.request(auth=self.auth,
                                                   # data=model.form_data,  # todo: implement this
-                                                  headers=model.headers or self.HDR,
+                                                  headers={**model.headers, **self.HDR},
                                                   json=model.json_body,
                                                   method=model.method,
                                                   params=model.parameters,
@@ -457,7 +455,7 @@ class BaseClientApi:
                                                   url=f'{base}{model.endpoint}')
 
             # todo: change to template
-            if self.debug or debug:
+            if self.debug:
                 print(f'auth: {self.auth}')
                 print(f'headers: {model.headers}')
                 print(f'json: {model.json_body}')
@@ -474,7 +472,7 @@ class BaseClientApi:
 
             return response
 
-    async def make_request(self, models: List[Record], debug: Optional[bool] = False) -> Results:
+    async def make_request(self, models: List[Record]) -> Results:
         """Make Request
 
         This is a convenience method to make calling easier.
@@ -482,15 +480,18 @@ class BaseClientApi:
 
         Args:
             models (List[Record]): If sending a list of models they must be all of the same type
-            debug (bool):
 
         Returns:
             results (Reults)"""
         if type(models) is not list:
             models = [models]
 
-        results = await asyncio.gather(*[asyncio.create_task(self.request(m, debug=debug)) for m in models])
-        return await self.process_results(results=Results(responses=results), model=models[0].__class__)
+        results = await asyncio.gather(*[asyncio.create_task(self.request(m)) for m in models])
+        debug(results)
+        res = Results(responses=results)
+        debug(res)
+
+        return await self.process_results(results=res, model=models[0].__class__)
 
 
 if __name__ == '__main__':
