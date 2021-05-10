@@ -120,14 +120,14 @@ def tprint(results: Results, requests: Optional[Any] = None, top: Optional[int] 
     # todo: if no text response received, return response status in response.failure instead of ''
     top_hdr = f'Top {top} ' if top else '1'
 
-    print(f'\n{top_hdr if len(results.success) > 1 else ""}[bold green]Success Result{"s" if len(results.success) > 1 else ""}'
+    print(f'\n{top_hdr if len(results.success) > 1 else ""}[bold green]Success Result{"s" if len(results.success) > 1 else ""}' \
           f'[/bold green] of {len(results.success)} Returned:')
     if top:
         debug(results.success[:top])
     else:
         debug(results.success)
 
-    print(f'\n{top_hdr if len(results.failure) > 1 else ""}[bold red]Failure Result{"s" if len(results.failure) > 1 else ""}'
+    print(f'\n{top_hdr if len(results.failure) > 1 else ""}[bold red]Failure Result{"s" if len(results.failure) > 1 else ""}' \
           f'[/bold red] of {len(results.failure)} Returned:')
 
     if top:

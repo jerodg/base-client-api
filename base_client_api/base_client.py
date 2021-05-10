@@ -60,6 +60,7 @@ class BaseClientApi:
         self.ssl: Optional[SSLContext] = None
         self.cfg: Optional[dict] = None
         self.env_prefix: Optional[str] = env_prefix
+        self.header: Optional[dict] = None
 
         self.load_config_data(cfg)
         self.process_config(self.cfg)
@@ -71,7 +72,7 @@ class BaseClientApi:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.session.close()
 
-    def load_config_data(self, cfg_data: Union[str, dict, List[Union[str, dict]]]) -> NoReturn:
+    def load_config_data(self, cfg_data: Union[str, dict]) -> NoReturn:
         """Load Configuration Data
 
         Args:
@@ -97,6 +98,8 @@ class BaseClientApi:
             else:
                 logger.error(f'Unknown configuration type: {c.split(".")[1]}\n-> Valid Types: .toml | .json | dict')
                 raise NotImplementedError
+
+            self.header = self.HDR
 
             if env_auth_user := getenv(f'{self.env_prefix}Auth_Username'):
                 cfg['Auth']['Username'] = env_auth_user
@@ -149,6 +152,7 @@ class BaseClientApi:
 
         Returns:
             (bool)"""
+
         try:
             if cfg_data['Options']['Debug']:
                 self.debug = True
@@ -210,6 +214,22 @@ class BaseClientApi:
         else:
             self.ssl = verify_ssl
 
+        # try:
+        #     content_type = cfg_data['Options']['Content_Type']
+        # except (KeyError, TypeError):
+        #     content_type = None
+        #
+        # if content_type:
+        #     self.header['Content-Type'] = content_type
+        #
+        # try:
+        #     accept = cfg_data['Options']['Accept']
+        # except (KeyError, TypeError):
+        #     accept = None
+        #
+        # if accept:
+        #     self.header['Accept'] = accept
+
         return True
 
     def session_config(self, cfg: dict) -> bool:
@@ -259,14 +279,26 @@ class BaseClientApi:
             auth_tkn = None
 
         try:
-            content_type = cfg['Options']['Content_type']
+            content_type = cfg['Options']['Content_Type']
         except (KeyError, TypeError):
-            content_type = 'application/json; charset=utf-8'
+            content_type = None
+
+        if content_type:
+            self.header['Content-Type'] = content_type
+
+        try:
+            accept = cfg['Options']['Accept']
+        except (KeyError, TypeError):
+            accept = None
+
+        if accept:
+            self.header['Accept'] = accept
 
         if auth_hdr and auth_tkn:
-            hdrs = {'Content-Type': content_type, auth_hdr: auth_tkn}
+            hdrs = {**self.header, auth_hdr: auth_tkn, 'Accept': accept, 'Content-Type': content_type}
+            # debug(hdrs)
         else:
-            hdrs = self.HDR
+            hdrs = self.header
 
         self.session = aio.ClientSession(auth=auth,
                                          cookies=cookies,
@@ -334,7 +366,7 @@ class BaseClientApi:
         Returns:
             results (Results): """
         for result in results.responses:
-            debug(result)
+            # debug(result)
             try:
                 # todo: switch to pattern matching/case statement in python 3.10
                 if result.headers['Content-Type'].startswith('application/jwt'):
@@ -408,8 +440,8 @@ class BaseClientApi:
         elif sort_order:
             results.success.sort(reverse=True if sort_order == 'desc' else False)
 
-        print('process_results:')
-        debug(results)
+        # print('process_results:')
+        # debug(results)
         return results
 
     @retry(retry=retry_if_exception_type(aio.ClientError),
@@ -445,7 +477,7 @@ class BaseClientApi:
         async with self.sem:
             response = await self.session.request(auth=self.auth,
                                                   # data=model.form_data,  # todo: implement this
-                                                  headers={**model.headers, **self.HDR},
+                                                  headers={**model.headers, **self.header},
                                                   json=model.json_body,
                                                   method=model.method,
                                                   params=model.parameters,
@@ -487,9 +519,9 @@ class BaseClientApi:
             models = [models]
 
         results = await asyncio.gather(*[asyncio.create_task(self.request(m)) for m in models])
-        debug(results)
+        # debug(results)
         res = Results(responses=results)
-        debug(res)
+        # debug(res)
 
         return await self.process_results(results=res, model=models[0].__class__)
 
