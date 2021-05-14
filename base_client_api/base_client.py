@@ -30,7 +30,6 @@ from urllib.parse import unquote_plus
 import aiohttp as aio
 import rapidjson
 import toml
-from devtools import debug
 from loguru import logger
 from rich import print
 from tenacity import after_log, before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
@@ -50,7 +49,8 @@ class BaseClientApi:
     HDR: dict = {'Content-Type': 'application/json; charset=utf-8', 'Accept': 'application/json'}
     SEM: int = 5  # This defines the number of parallel requests to make.
 
-    def __init__(self, cfg: Optional[Union[str, dict]] = None, env_prefix: Optional[str] = ''):
+    def __init__(self, cfg: Optional[Union[str, dict]] = None, platform_prefix: Optional[str] = None,
+                 instance_prefix: Optional[str] = None):
         self.debug: bool = False
         self.auth: Optional[aio.BasicAuth] = None
         self.proxy: Optional[str] = None
@@ -59,7 +59,8 @@ class BaseClientApi:
         self.session: Optional[aio.ClientSession] = None
         self.ssl: Optional[SSLContext] = None
         self.cfg: Optional[dict] = None
-        self.env_prefix: Optional[str] = env_prefix
+        self.instance_prefix: Optional[str] = instance_prefix
+        self.platform_prefix: Optional[str] = platform_prefix
         self.header: Optional[dict] = None
 
         self.load_config_data(cfg)
@@ -89,7 +90,7 @@ class BaseClientApi:
         for c in cfg_data:
             if type(c) is dict:
                 cfg = c
-                debug(c)
+                # debug(c)
             elif type(c) is str:
                 if c.endswith('.toml'):
                     cfg = toml.load(c)
@@ -101,50 +102,66 @@ class BaseClientApi:
 
             self.header = self.HDR
 
-            if env_auth_user := getenv(f'{self.env_prefix}Auth_Username'):
+            # debug(cfg)
+            # debug(self.platform_prefix)
+
+            # x = getenv(f'{self.platform_prefix}{self.instance_prefix}Auth_Username')
+            # debug(x)
+
+            # debug(self.platform_prefix)
+            # debug(self.instance_prefix)
+
+            if env_auth_user := getenv(f'{self.platform_prefix}{self.instance_prefix}Auth_Username'):
+
                 cfg['Auth']['Username'] = env_auth_user
 
-            if env_auth_pass := getenv(f'{self.env_prefix}Auth_Password'):
+            # debug(env_auth_user)
+
+            if env_auth_pass := getenv(f'{self.platform_prefix}{self.instance_prefix}Auth_Password'):
                 cfg['Auth']['Password'] = env_auth_pass
 
-            if env_auth_header := getenv(f'{self.env_prefix}Auth_Header'):
+            # debug(env_auth_pass)
+
+            if env_auth_header := getenv(f'{self.platform_prefix}{self.instance_prefix}Auth_Header'):
                 cfg['Auth']['Header'] = env_auth_header
 
-            if env_auth_token := getenv(f'{self.env_prefix}Auth_Token'):
+            if env_auth_token := getenv(f'{self.platform_prefix}{self.instance_prefix}Auth_Token'):
                 cfg['Auth']['Token'] = env_auth_token
 
-            if env_uri_base := getenv(f'{self.env_prefix}URI_Base'):
+            if env_uri_base := getenv(f'{self.platform_prefix}{self.instance_prefix}URI_Base'):
                 cfg['URI']['Base'] = env_uri_base
 
-            if env_opt_ca := getenv(f'{self.env_prefix}Options_CAPath'):
+            if env_opt_ca := getenv(f'{self.platform_prefix}{self.instance_prefix}Options_CAPath'):
                 cfg['Options']['CAPath'] = env_opt_ca
 
-            if env_opt_ssl := getenv(f'{self.env_prefix}Options_VerifySSL'):
+            if env_opt_ssl := getenv(f'{self.platform_prefix}{self.instance_prefix}Options_VerifySSL'):
                 cfg['Options']['VerifySS:'] = env_opt_ssl
 
-            if env_opt_dbg := getenv(f'{self.env_prefix}Options_Debug'):
+            if env_opt_dbg := getenv(f'{self.platform_prefix}{self.instance_prefix}Options_Debug'):
                 cfg['Options']['Ddebug'] = env_opt_dbg
 
-            if env_opt_sem := getenv(f'{self.env_prefix}Options_SEM'):
+            if env_opt_sem := getenv(f'{self.platform_prefix}{self.instance_prefix}Options_SEM'):
                 cfg['Options']['SEM'] = env_opt_sem
 
-            if env_prxy_uri := getenv(f'{self.env_prefix}Proxy_URI'):
+            if env_prxy_uri := getenv(f'{self.platform_prefix}{self.instance_prefix}Proxy_URI'):
                 cfg['Proxy']['URI'] = env_prxy_uri
 
-            if env_prxy_port := getenv(f'{self.env_prefix}Proxy_Port'):
+            if env_prxy_port := getenv(f'{self.platform_prefix}{self.instance_prefix}Proxy_Port'):
                 cfg['Proxy']['Port'] = env_prxy_port
 
-            if env_prxy_user := getenv(f'{self.env_prefix}Proxy_Username'):
+            if env_prxy_user := getenv(f'{self.platform_prefix}{self.instance_prefix}Proxy_Username'):
                 cfg['Proxy']['Username'] = env_prxy_user
 
-            if env_prxy_pass := getenv(f'{self.env_prefix}Proxy_Password'):
+            if env_prxy_pass := getenv(f'{self.platform_prefix}{self.instance_prefix}Proxy_Password'):
                 cfg['Proxy']['Password'] = env_prxy_pass
 
             self.cfg = cfg
 
+            # debug(cfg)
+
             return
 
-    def process_config(self, cfg_data: dict) -> bool:
+    def process_config(self, cfg_data: dict) -> NoReturn:
         """Process Configuration
 
         Args:
@@ -214,23 +231,7 @@ class BaseClientApi:
         else:
             self.ssl = verify_ssl
 
-        # try:
-        #     content_type = cfg_data['Options']['Content_Type']
-        # except (KeyError, TypeError):
-        #     content_type = None
-        #
-        # if content_type:
-        #     self.header['Content-Type'] = content_type
-        #
-        # try:
-        #     accept = cfg_data['Options']['Accept']
-        # except (KeyError, TypeError):
-        #     accept = None
-        #
-        # if accept:
-        #     self.header['Accept'] = accept
-
-        return True
+        return
 
     def session_config(self, cfg: dict) -> bool:
         """Session Configuration
@@ -242,19 +243,26 @@ class BaseClientApi:
             (bool)"""
         # Auth
         try:
+            # debug(cfg)
             username = cfg['Auth']['Username']
         except (KeyError, TypeError):
             username = None
+
+        # debug(username)
 
         try:
             password = cfg['Auth']['Password']
         except (KeyError, TypeError):
             password = None
 
+        # debug(password)
+
         if username or password:
-            auth = aio.BasicAuth(login=username, password=password)
+            auth = aio.BasicAuth(login=username, password=password, encoding='utf-8')
         else:
             auth = None
+
+        # debug(auth)
 
         # Cookies; Can't be overwridden by env_vars; Must be a dct
         try:
@@ -366,7 +374,6 @@ class BaseClientApi:
         Returns:
             results (Results): """
         for result in results.responses:
-            # debug(result)
             try:
                 # todo: switch to pattern matching/case statement in python 3.10
                 if result.headers['Content-Type'].startswith('application/jwt'):
@@ -440,8 +447,6 @@ class BaseClientApi:
         elif sort_order:
             results.success.sort(reverse=True if sort_order == 'desc' else False)
 
-        # print('process_results:')
-        # debug(results)
         return results
 
     @retry(retry=retry_if_exception_type(aio.ClientError),
@@ -473,6 +478,10 @@ class BaseClientApi:
             base = self.cfg['URI']['Base']
         except TypeError:
             base = ''
+
+        # if getenv(f'{self.platform_prefix}{self.instance_prefix}Auth_Header'):
+        #     auth = None
+        #     debug(auth)
 
         async with self.sem:
             response = await self.session.request(auth=self.auth,
@@ -519,9 +528,8 @@ class BaseClientApi:
             models = [models]
 
         results = await asyncio.gather(*[asyncio.create_task(self.request(m)) for m in models])
-        # debug(results)
+
         res = Results(responses=results)
-        # debug(res)
 
         return await self.process_results(results=res, model=models[0].__class__)
 
